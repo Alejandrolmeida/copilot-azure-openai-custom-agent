@@ -45,12 +45,18 @@ AZURE_SUBSCRIPTION_ID=YOUR_SUBSCRIPTION_ID
 
 The wrapper can load the secret at runtime.
 
+For a fully portable setup where endpoint, deployment name, model identity,
+token budgets, and the key secret name are all loaded from Key Vault after
+`az login`, see
+[07. Portable bootstrap with Azure Key Vault](07-portable-keyvault-bootstrap.md).
+
 ## Least privilege
 
 - Use separate resources for experimentation.
 - Rotate keys regularly.
 - Restrict network access when possible.
-- Use managed identity or Microsoft Entra ID where your client and service support it.
+- Use managed identity or Microsoft Entra ID where your client and service
+  support it.
 - Monitor token usage and costs.
 
 ## Public tutorial checklist
@@ -58,7 +64,8 @@ The wrapper can load the secret at runtime.
 Before publishing a repo:
 
 ```bash
-grep -R --line-number -E 'sk-|api[_-]?key|secret|tenant|subscription|openai.azure.com' . \
+grep -R --line-number \
+  -E 'sk-|api[_-]?key|secret|tenant|subscription|openai.azure.com' . \
   --exclude-dir=.git \
   --exclude=.env.example
 ```

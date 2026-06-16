@@ -1,6 +1,7 @@
 # 04. Configure GitHub Copilot CLI with Azure OpenAI BYOK
 
-GitHub Copilot CLI supports custom model providers through environment variables. For Azure OpenAI / Azure AI Foundry, the important variables are:
+GitHub Copilot CLI supports custom model providers through environment
+variables. For Azure OpenAI / Azure AI Foundry, the important variables are:
 
 ```bash
 COPILOT_PROVIDER_TYPE=azure
@@ -19,7 +20,8 @@ COPILOT_PROVIDER_API_KEY=YOUR_API_KEY
 COPILOT_PROVIDER_MODEL_ID
 ```
 
-is the well-known model identity Copilot CLI uses for agent capabilities, prompting strategy, tool support, and token limits.
+is the well-known model identity Copilot CLI uses for agent capabilities,
+prompting strategy, tool support, and token limits.
 
 ```text
 COPILOT_PROVIDER_WIRE_MODEL
@@ -53,6 +55,10 @@ Start an interactive session:
 ```bash
 ./examples/copilot-azure-wrapper.sh
 ```
+
+If you want to use the same model configuration on multiple machines after
+`az login`, use the portable Key Vault bootstrap flow in
+[07. Portable bootstrap with Azure Key Vault](07-portable-keyvault-bootstrap.md).
 
 Run a non-interactive prompt:
 
