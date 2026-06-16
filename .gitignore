@@ -1,6 +1,8 @@
 .env
 .env.*
 !.env.example
+!examples/.env.keyvault.example
+private/
 *.log
 .DS_Store
 node_modules/
