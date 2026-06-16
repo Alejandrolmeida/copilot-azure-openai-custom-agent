@@ -1,5 +1,7 @@
 # 07. Portable bootstrap with Azure Key Vault
 
+🌐 Language: English | [Español](es/07-portable-keyvault-bootstrap.md)
+
 Use this flow when you want to keep one Azure-hosted custom model
 configuration and reuse it from any machine where you can clone this repository
 and run `az login`.

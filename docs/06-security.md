@@ -1,5 +1,7 @@
 # 06. Security recommendations
 
+🌐 Language: English | [Español](es/06-security.md)
+
 ## Never commit secrets
 
 Do not commit:

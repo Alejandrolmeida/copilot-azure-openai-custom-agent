@@ -1,9 +1,9 @@
-# 04. Configure GitHub Copilot CLI with Azure OpenAI BYOK
+# 04. Configurar GitHub Copilot CLI con Azure OpenAI BYOK
 
-🌐 Language: English | [Español](es/04-configure-copilot-cli.md)
+🌐 Idioma: [English](../04-configure-copilot-cli.md) | Español
 
-GitHub Copilot CLI supports custom model providers through environment
-variables. For Azure OpenAI / Azure AI Foundry, the important variables are:
+GitHub Copilot CLI admite proveedores de modelos personalizados mediante variables
+de entorno. Para Azure OpenAI / Azure AI Foundry, las variables importantes son:
 
 ```bash
 COPILOT_PROVIDER_TYPE=azure
@@ -16,53 +16,54 @@ COPILOT_PROVIDER_MAX_OUTPUT_TOKENS=16384
 COPILOT_PROVIDER_API_KEY=YOUR_API_KEY
 ```
 
-## Why two model names?
+## ¿Por qué dos nombres de modelo?
 
 ```text
 COPILOT_PROVIDER_MODEL_ID
 ```
 
-is the well-known model identity Copilot CLI uses for agent capabilities,
-prompting strategy, tool support, and token limits.
+es la identidad de modelo conocida que Copilot CLI usa para capacidades de
+agente, estrategia de prompts, compatibilidad con herramientas y límites de
+tokens.
 
 ```text
 COPILOT_PROVIDER_WIRE_MODEL
 ```
 
-is the deployment name sent to Azure.
+es el nombre de implementación que se envía a Azure.
 
-For example:
+Por ejemplo:
 
 ```bash
 COPILOT_PROVIDER_MODEL_ID=gpt-5.5
 COPILOT_PROVIDER_WIRE_MODEL=my-gpt-5-5-deployment
 ```
 
-## Use the wrapper
+## Usar el wrapper
 
-Copy and edit `.env`:
+Copia y edita `.env`:
 
 ```bash
 cp examples/.env.example .env
 ```
 
-Then run:
+Después ejecuta:
 
 ```bash
 ./examples/copilot-azure-wrapper.sh --print-config
 ```
 
-Start an interactive session:
+Inicia una sesión interactiva:
 
 ```bash
 ./examples/copilot-azure-wrapper.sh
 ```
 
-If you want to use the same model configuration on multiple machines after
-`az login`, use the portable Key Vault bootstrap flow in
-[07. Portable bootstrap with Azure Key Vault](07-portable-keyvault-bootstrap.md).
+Si quieres usar la misma configuración de modelo en varias máquinas después de
+`az login`, usa el flujo portable con Key Vault en
+[07. Bootstrap portable con Azure Key Vault](07-portable-keyvault-bootstrap.md).
 
-Run a non-interactive prompt:
+Ejecuta un prompt no interactivo:
 
 ```bash
 ./examples/copilot-azure-wrapper.sh \
@@ -70,31 +71,31 @@ Run a non-interactive prompt:
   --allow-all
 ```
 
-## Endpoint shape
+## Forma del endpoint
 
-Azure OpenAI v1 endpoint for direct API calls:
+Endpoint de Azure OpenAI v1 para llamadas directas a la API:
 
 ```text
 https://YOUR-AZURE-OPENAI-RESOURCE.openai.azure.com/openai/v1/
 ```
 
-Copilot CLI Azure provider base URL:
+URL base del proveedor Azure para Copilot CLI:
 
 ```text
 https://YOUR-AZURE-OPENAI-RESOURCE.openai.azure.com
 ```
 
-The wrapper strips `/openai/v1/` automatically.
+El wrapper elimina `/openai/v1/` automáticamente.
 
-## Recommended flags
+## Flags recomendados
 
-The wrapper launches:
+El wrapper lanza:
 
 ```bash
 copilot --model "$COPILOT_MODEL" --context long_context --effort max
 ```
 
-You can override:
+Puedes sobrescribirlo:
 
 ```bash
 COPILOT_CONTEXT_TIER=default ./examples/copilot-azure-wrapper.sh

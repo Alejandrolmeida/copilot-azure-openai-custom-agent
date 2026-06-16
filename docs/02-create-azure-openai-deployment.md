@@ -1,5 +1,7 @@
 # 02. Create an Azure OpenAI / Azure AI Foundry deployment
 
+🌐 Language: English | [Español](es/02-create-azure-openai-deployment.md)
+
 This guide uses generic placeholders. Replace them with your own names.
 
 ## Option A: Azure AI Foundry portal
@@ -20,11 +22,13 @@ This guide uses generic placeholders. Replace them with your own names.
    https://YOUR-AZURE-OPENAI-RESOURCE.openai.azure.com/openai/v1/
    ```
 
-7. Get an API key from the resource or configure Microsoft Entra ID authentication if supported by your client.
+7. Get an API key from the resource or configure Microsoft Entra ID
+   authentication if supported by your client.
 
 ## Option B: Azure CLI example
 
-The exact CLI commands depend on model availability, region, quota, and deployment type. Treat this as a starting point:
+The exact CLI commands depend on model availability, region, quota, and
+deployment type. Treat this as a starting point:
 
 ```bash
 az cognitiveservices account create \
@@ -36,7 +40,8 @@ az cognitiveservices account create \
   --custom-domain YOUR_AZURE_OPENAI_RESOURCE
 ```
 
-Then deploy your model from the portal or with the supported Azure CLI/API for your model family.
+Then deploy your model from the portal or with the supported Azure CLI/API for
+your model family.
 
 ## Collect these values
 

@@ -1,5 +1,7 @@
 # GitHub Copilot with Azure OpenAI / Azure AI Foundry custom models
 
+🌐 Language: English | [Español](README.es.md)
+
 Step-by-step community tutorial for using an Azure OpenAI or Azure AI Foundry
 model as a custom provider with GitHub Copilot workflows in:
 
@@ -31,6 +33,7 @@ Model deployment, for example: gpt-5, gpt-4.1, gpt-4o, etc.
 ```text
 .
 ├── README.md
+├── README.es.md
 ├── docs/
 │   ├── 01-prerequisites.md
 │   ├── 02-create-azure-openai-deployment.md
@@ -39,7 +42,16 @@ Model deployment, for example: gpt-5, gpt-4.1, gpt-4o, etc.
 │   ├── 05-subagents.md
 │   ├── 06-security.md
 │   ├── 07-portable-keyvault-bootstrap.md
-│   └── troubleshooting.md
+│   ├── troubleshooting.md
+│   └── es/
+│       ├── 01-prerequisites.md
+│       ├── 02-create-azure-openai-deployment.md
+│       ├── 03-configure-vscode.md
+│       ├── 04-configure-copilot-cli.md
+│       ├── 05-subagents.md
+│       ├── 06-security.md
+│       ├── 07-portable-keyvault-bootstrap.md
+│       └── troubleshooting.md
 ├── examples/
 │   ├── .env.example
 │   ├── .env.keyvault.example

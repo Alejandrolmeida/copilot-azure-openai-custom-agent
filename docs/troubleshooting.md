@@ -1,5 +1,7 @@
 # Troubleshooting
 
+🌐 Language: English | [Español](es/troubleshooting.md)
+
 ## `ERROR: AZURE_OPENAI_BASE_URL is required`
 
 Create `.env` from the example and fill it:
@@ -24,7 +26,8 @@ Likely causes:
 - wrong endpoint
 - wrong deployment name
 - model deployment is still provisioning
-- using `/openai/v1` where the client expects only the resource host, or vice versa
+- using `/openai/v1` where the client expects only the resource host, or vice
+  versa
 
 For direct smoke tests, use:
 
@@ -40,7 +43,8 @@ https://YOUR-AZURE-OPENAI-RESOURCE.openai.azure.com
 
 ## Model replies with no visible content
 
-Reasoning-capable models may spend output budget on internal reasoning tokens. Increase:
+Reasoning-capable models may spend output budget on internal reasoning tokens.
+Increase:
 
 ```bash
 AZURE_OPENAI_MAX_COMPLETION_TOKENS=16384
@@ -69,7 +73,9 @@ Inside Copilot CLI, open:
 
 ## VS Code does not show my custom model
 
-Model availability in VS Code depends on GitHub Copilot capabilities, organization settings, extension version, and custom model registration. The workspace settings select a model only after it is available to VS Code.
+Model availability in VS Code depends on GitHub Copilot capabilities,
+organization settings, extension version, and custom model registration. The
+workspace settings select a model only after it is available to VS Code.
 
 ## Copilot CLI command not found
 

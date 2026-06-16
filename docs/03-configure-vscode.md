@@ -1,8 +1,14 @@
 # 03. Configure Visual Studio Code
 
-Visual Studio Code and GitHub Copilot can select models exposed by your GitHub Copilot plan and organization policies. Custom/BYOK model availability in VS Code may depend on preview features, enterprise policy, extension version, and how your organization registers custom models.
+🌐 Language: English | [Español](es/03-configure-vscode.md)
 
-This repository provides a safe template for workspace settings and terminal environment variables.
+Visual Studio Code and GitHub Copilot can select models exposed by your GitHub
+Copilot plan and organization policies. Custom/BYOK model availability in
+VS Code may depend on preview features, enterprise policy, extension version,
+and how your organization registers custom models.
+
+This repository provides a safe template for workspace settings and terminal
+environment variables.
 
 ## Example workspace settings
 
@@ -48,7 +54,8 @@ These variables are useful for scripts opened inside VS Code terminals:
 }
 ```
 
-Do not place API keys in committed workspace settings. Use a local `.env`, user settings, keychain, Azure Key Vault, or another secret manager.
+Do not place API keys in committed workspace settings. Use a local `.env`, user
+settings, keychain, Azure Key Vault, or another secret manager.
 
 ## Verify in VS Code
 
@@ -56,8 +63,13 @@ Do not place API keys in committed workspace settings. Use a local `.env`, user 
 2. Open GitHub Copilot Chat.
 3. Check the model picker or use the model selector UI.
 4. Ask a simple prompt.
-5. If the model does not appear, check your Copilot plan, organization policy, and extension version.
+5. If the model does not appear, check your Copilot plan, organization policy,
+   and extension version.
 
 ## Important difference from Copilot CLI
 
-The Copilot CLI has explicit BYOK environment variables such as `COPILOT_PROVIDER_BASE_URL`. VS Code model registration and availability may be managed by GitHub Copilot settings, organization policies, or extension features. The workspace settings in this tutorial select a model once it is available to VS Code; they do not create the Azure provider by themselves.
+The Copilot CLI has explicit BYOK environment variables such as
+`COPILOT_PROVIDER_BASE_URL`. VS Code model registration and availability may be
+managed by GitHub Copilot settings, organization policies, or extension
+features. The workspace settings in this tutorial select a model once it is
+available to VS Code; they do not create the Azure provider by themselves.

@@ -1,12 +1,15 @@
 # 01. Prerequisites
 
+🌐 Language: English | [Español](es/01-prerequisites.md)
+
 You need:
 
 - A GitHub account with GitHub Copilot access.
 - Visual Studio Code with the GitHub Copilot Chat extension.
 - GitHub Copilot CLI if you want terminal agent workflows.
 - An Azure subscription with access to Azure OpenAI or Azure AI Foundry.
-- A deployed chat model, for example GPT-5, GPT-4.1, GPT-4o, or another compatible model.
+- A deployed chat model, for example GPT-5, GPT-4.1, GPT-4o, or another
+  compatible model.
 - Python 3.10+ for the optional smoke test.
 - Azure CLI if you want to load secrets from Azure Key Vault.
 
@@ -37,7 +40,9 @@ For normal GitHub Copilot routing:
 copilot login
 ```
 
-When using a custom BYOK provider with `COPILOT_PROVIDER_BASE_URL`, GitHub auth may not be required for model access, but GitHub integration features still need authentication.
+When using a custom BYOK provider with `COPILOT_PROVIDER_BASE_URL`, GitHub auth
+may not be required for model access, but GitHub integration features still need
+authentication.
 
 ## Install Azure CLI
 

@@ -1,5 +1,7 @@
 # 05. Configure GitHub Copilot CLI subagents
 
+🌐 Language: English | [Español](es/05-subagents.md)
+
 GitHub Copilot CLI can use subagents such as:
 
 ```text
@@ -18,7 +20,8 @@ Projects can also define agents in:
 
 ## Why configure subagents separately?
 
-The main Copilot CLI session can use your Azure model while subagents still use their default models. To avoid that, you need subagent overrides.
+The main Copilot CLI session can use your Azure model while subagents still use
+their default models. To avoid that, you need subagent overrides.
 
 Copilot CLI stores persistent settings in:
 
@@ -26,7 +29,8 @@ Copilot CLI stores persistent settings in:
 ~/.copilot/settings.json
 ```
 
-The wrapper in this repository automatically updates that file before launching Copilot CLI.
+The wrapper in this repository automatically updates that file before launching
+Copilot CLI.
 
 ## Example subagent config
 
@@ -53,7 +57,8 @@ The wrapper in this repository automatically updates that file before launching 
 
 `examples/copilot-azure-wrapper.sh` configures:
 
-- built-in subagents: `explore`, `task`, `general-purpose`, `code-review`, `research`
+- built-in subagents: `explore`, `task`, `general-purpose`, `code-review`,
+  `research`
 - project agents found in `.github/agents/*.agent.md`
 
 with:
