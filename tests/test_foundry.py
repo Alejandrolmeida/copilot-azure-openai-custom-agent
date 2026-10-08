@@ -110,18 +110,45 @@ class TemporaryAccessTests(unittest.TestCase):
             }},
         }
 
-    def test_ip_requires_public_ipv4_without_contacting_third_parties(self):
-        for entered in ("127.0.0.1", "10.1.2.3", "not-an-ip", "2001:4860:4860::8888"):
-            with self.subTest(entered=entered), \
-                    patch.object(foundry.sys.stdin, "isatty", return_value=True), \
-                    patch("builtins.input", return_value=entered):
+    def test_ip_lookup_requires_public_ipv4_without_prompting(self):
+        with patch("builtins.input") as prompt, \
+                patch.object(foundry.subprocess, "run",
+                             return_value=CompletedProcess([], 0, self.IP + "\n", "")) as run:
+            self.assertEqual(foundry.session_ip(), self.IP)
+        prompt.assert_not_called()
+        self.assertEqual(run.call_args.args[0][-1], "https://ifconfig.me/ip")
+        self.assertIn("--ipv4", run.call_args.args[0])
+        self.assertIn("--disable", run.call_args.args[0])
+        self.assertEqual(run.call_args.kwargs["timeout"], 15)
+        for response in ("127.0.0.1", "10.1.2.3", "not-an-ip",
+                         "2001:4860:4860::8888", self.IP + "\n1.1.1.1"):
+            with self.subTest(response=response), \
+                    patch.object(foundry.subprocess, "run",
+                                 return_value=CompletedProcess([], 0, response, "")):
                 with self.assertRaises(ValueError):
                     foundry.session_ip()
-        with patch.object(foundry.sys.stdin, "isatty", return_value=True), \
-                patch("builtins.input", return_value=self.IP), \
-                patch.object(foundry.subprocess, "run") as run:
-            self.assertEqual(foundry.session_ip(), self.IP)
-            run.assert_not_called()
+        with patch.object(foundry.subprocess, "run",
+                          return_value=CompletedProcess([], 22, "", "private upstream error")):
+            with self.assertRaisesRegex(ValueError, "Could not discover public IPv4") as error:
+                foundry.session_ip()
+        self.assertNotIn("private upstream error", str(error.exception))
+
+    def test_failed_ip_lookup_does_not_read_key_or_change_network_rules(self):
+        with patch.object(foundry.sys, "argv",
+                          ["foundry.py", "run", "foundry6", "--temporary-ip-access",
+                           "--model", "gpt-6-sol"]), \
+                patch.object(foundry, "read_profile", return_value=PROFILE), \
+                patch.object(foundry, "load_config_for_run", return_value=config()), \
+                patch.object(foundry, "deployment_limits", return_value=(64000, 8000, 100000)), \
+                patch.object(foundry, "session_ip", side_effect=ValueError("IP lookup failed")), \
+                patch.object(foundry, "secret") as key, \
+                patch.object(foundry, "set_network_rules") as update, \
+                patch.object(foundry.sys, "stderr", new_callable=io.StringIO):
+            with self.assertRaises(SystemExit) as error:
+                foundry.main()
+        self.assertEqual(error.exception.code, 1)
+        key.assert_not_called()
+        update.assert_not_called()
 
     def test_network_patch_checks_account_identity_etag_and_confirms_rules(self):
         resource = (f"/subscriptions/{SUBSCRIPTION}/resourceGroups/rg-example"

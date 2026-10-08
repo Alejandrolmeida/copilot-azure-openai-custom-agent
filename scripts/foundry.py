@@ -270,13 +270,17 @@ def set_network_rules(profile, config, action, ips, expected):
 
 
 def session_ip():
-    require(sys.stdin.isatty(), "An interactive terminal is required for temporary IP access")
-    value = input("Indica tu IP publica IPv4 actual: ").strip()
+    result = subprocess.run(
+        ["curl", "--disable", "--ipv4", "--fail", "--silent",
+         "--max-time", "10", "--proto", "=https", "https://ifconfig.me/ip"],
+        capture_output=True, text=True, timeout=15,
+    )
+    require(result.returncode == 0, "Could not discover public IPv4 address")
     try:
-        ip = ipaddress.IPv4Address(value)
+        ip = ipaddress.IPv4Address(result.stdout.strip())
     except ipaddress.AddressValueError:
-        raise ValueError("Invalid public IPv4 address") from None
-    require(ip.is_global, "Expected a public IPv4 address")
+        raise ValueError("IP lookup returned an invalid public IPv4 address") from None
+    require(ip.is_global, "IP lookup returned a non-public IPv4 address")
     return str(ip)
 
 

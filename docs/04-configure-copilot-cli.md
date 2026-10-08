@@ -83,11 +83,14 @@ python3 scripts/foundry.py access foundry6 close
 `prepare` blocks all public IPs on the Foundry6 account until a temporary
 session starts. The **Foundry6-only** shortcut must pass
 `--temporary-ip-access` to `scripts/foundry.py run foundry6`. The launcher
-prompts for the current **public IPv4 egress address**; check it independently
-before entering it (VPNs/proxies may change egress). It validates the address
-format but does not discover or transmit it to an IP-lookup service. It allows
-that IP only while the Copilot child process runs, then removes the rule on
-exit. For a billable inference check instead, run
+automatically discovers the current **public IPv4 egress address** using
+`curl -4 https://ifconfig.me/ip` after the model is selected. This sends the
+connection's public IP to ifconfig.me; the launcher sends no Azure credentials
+and does not print the IP. VPNs/proxies may use a different egress to Azure:
+if inference fails, check the route before changing the ACL manually. A
+lookup failure or invalid/non-public response stops before reading the API key
+or allowing any IP. The rule exists only while the Copilot child process runs
+and is removed on exit. For a billable inference check instead, run
 `python3 scripts/foundry.py run foundry6 --temporary-ip-access --model MODEL --smoke-test`.
 `close` restores `Allow` with zero rules **only after all sessions have ended**.
 

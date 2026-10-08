@@ -84,12 +84,16 @@ python3 scripts/foundry.py access foundry6 close
 
 `prepare` bloquea todas las IP publicas de la cuenta Foundry6 hasta iniciar
 una sesion temporal. El atajo **exclusivo de Foundry6** debe pasar
-`--temporary-ip-access` a `scripts/foundry.py run foundry6`. El lanzador pide
-la **IPv4 publica de salida** actual: compruebala por tu cuenta antes de
-introducirla (VPN o proxy pueden cambiarla). Valida el formato pero no consulta
-ni transmite la IP a servicios externos de deteccion. Solo permite esa IP
-mientras se ejecuta Copilot y retira la regla al salir. Para una prueba de
-inferencia con coste, ejecuta
+`--temporary-ip-access` a `scripts/foundry.py run foundry6`. El lanzador
+descubre automaticamente la **IPv4 publica de salida** con
+`curl -4 https://ifconfig.me/ip` tras seleccionar el modelo. La conexion
+revela esa IP a ifconfig.me; el lanzador no envia credenciales de Azure ni
+muestra la IP. Una VPN o un proxy pueden usar otra salida hacia Azure: si falla la
+inferencia, comprueba la ruta antes de cambiar la ACL manualmente. Un fallo
+de consulta o una respuesta invalida/no publica detiene el flujo antes de
+leer la API key o permitir ninguna IP. La regla solo existe mientras se
+ejecuta Copilot y se retira al salir. Para una prueba de inferencia con coste,
+ejecuta
 `python3 scripts/foundry.py run foundry6 --temporary-ip-access --model MODELO --smoke-test`.
 `close` restaura `Allow` sin reglas **solo cuando hayan terminado todas las
 sesiones**.
