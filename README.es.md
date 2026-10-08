@@ -63,6 +63,16 @@ pueden solicitar otro deployment. [Diagnostica las llamadas reales](docs/es/05-s
 no solo el YAML del agente. Contexto, TPM/RPM y dinero son límites distintos.
 Los presupuestos envían alertas, no detienen el gasto.
 
+## Diagramas de arquitectura
+
+Estos diagramas sintéticos describen la implementación, no la configuración
+efectiva de ninguna suscripción Azure:
+
+- [Infraestructura con endpoints públicos](docs/diagrams/01-infraestructura-publica.png)
+- [Aprovisionamiento: plan y apply](docs/diagrams/02-secuencia-plan-apply.png)
+- [Inicialización explícita de Key Vault](docs/diagrams/03-secuencia-bootstrap-vault.png)
+- [Arranque e inferencia](docs/diagrams/04-secuencia-arranque-inferencia.png)
+
 ## Guías
 
 1. [Requisitos y permisos](docs/es/01-prerequisites.md)

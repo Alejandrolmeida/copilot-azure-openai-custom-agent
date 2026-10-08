@@ -4,6 +4,7 @@ from pathlib import Path
 import re
 import subprocess
 import sys
+import zlib
 
 ROOT = Path(__file__).resolve().parents[1]
 DIRECTORIES = {".github", "docs", "examples", "scripts", "tests", "infra", "tools", "schemas"}
@@ -13,6 +14,35 @@ FILES = {"README.md", "README.es.md", "LICENSE", "SECURITY.md", "CONTRIBUTING.md
 PUBLIC_ROLE_IDS = {"4633458b-17de-408a-b874-0445c86b69e6"}
 SYNTHETIC_HOSTS = {"oai-example.openai.azure.com", "different.openai.azure.com",
                    "oai.openai.azure.com", "example.openai.azure.com"}
+PUBLIC_DIAGRAMS = {Path("docs/diagrams") / f"{number}-{name}.png"
+                   for number, name in (("01", "infraestructura-publica"),
+                                        ("02", "secuencia-plan-apply"),
+                                        ("03", "secuencia-bootstrap-vault"),
+                                        ("04", "secuencia-arranque-inferencia"))}
+
+
+def metadata_free_png(data):
+    if not data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return False
+    position = 8
+    chunks = []
+    while position + 12 <= len(data):
+        length = int.from_bytes(data[position:position + 4], "big")
+        end = position + 12 + length
+        if end > len(data):
+            return False
+        kind = data[position + 4:position + 8]
+        if kind not in (b"IHDR", b"IDAT", b"IEND"):
+            return False
+        checksum = int.from_bytes(data[end - 4:end], "big")
+        if zlib.crc32(data[position + 4:end - 4]) != checksum:
+            return False
+        chunks.append(kind)
+        position = end
+        if kind == b"IEND":
+            break
+    return (chunks[:1] == [b"IHDR"] and b"IDAT" in chunks
+            and chunks[-1:] == [b"IEND"] and position == len(data))
 
 
 def findings(text):
@@ -59,7 +89,12 @@ def public_files():
 def check():
     errors = []
     for relative in public_files():
-        text = (ROOT / relative).read_text(encoding="utf-8")
+        file = ROOT / relative
+        if file.suffix == ".png":
+            if relative not in PUBLIC_DIAGRAMS or not metadata_free_png(file.read_bytes()):
+                errors.append(f"{relative}: unexpected public image or PNG metadata")
+            continue
+        text = file.read_text(encoding="utf-8")
         errors.extend(f"{relative}:{line}: {category}" for line, category in findings(text))
     return errors
 

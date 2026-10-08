@@ -246,6 +246,13 @@ class SecretTests(unittest.TestCase):
 
 
 class PublicationTests(unittest.TestCase):
+    def test_public_diagrams_have_no_embedded_metadata(self):
+        for diagram in check_public.PUBLIC_DIAGRAMS:
+            self.assertTrue(check_public.metadata_free_png((ROOT / diagram).read_bytes()))
+        self.assertFalse(check_public.metadata_free_png(b"not a PNG"))
+        original = (ROOT / "docs/diagrams/01-infraestructura-publica.png").read_bytes()
+        self.assertFalse(check_public.metadata_free_png(original + b"hidden data"))
+
     def test_privacy_findings_never_include_matched_values(self):
         private_id = "a" * 8 + "-" + "-".join(["a" * 4] * 3) + "-" + "a" * 12
         result = check_public.findings(private_id)

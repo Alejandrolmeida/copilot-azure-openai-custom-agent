@@ -62,6 +62,16 @@ Subagents may inherit the active BYOK model; auxiliary CLI functions can request
 another deployment. [Diagnose actual calls](docs/05-subagents.md), not just agent YAML.
 Context limits, TPM/RPM and money are separate. Budgets send alerts, not hard stops.
 
+## Architecture diagrams
+
+These synthetic diagrams describe the implementation, not the effective
+configuration of an Azure subscription:
+
+- [Public-endpoint infrastructure](docs/diagrams/01-infraestructura-publica.png)
+- [Provisioning: plan and apply](docs/diagrams/02-secuencia-plan-apply.png)
+- [Explicit Key Vault initialization](docs/diagrams/03-secuencia-bootstrap-vault.png)
+- [Launcher and inference](docs/diagrams/04-secuencia-arranque-inferencia.png)
+
 ## Guides
 
 1. [Prerequisites and permissions](docs/01-prerequisites.md)
