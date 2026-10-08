@@ -2,7 +2,9 @@
 """Explicit subscription/model profiles for Copilot, with credentials in Key Vault."""
 
 import argparse
+from contextlib import contextmanager
 from datetime import date
+import ipaddress
 import json
 import math
 import os
@@ -10,6 +12,7 @@ from pathlib import Path
 import re
 import shlex
 import shutil
+import signal
 import subprocess
 import sys
 import urllib.error
@@ -223,6 +226,102 @@ def load_config_for_run(profile):
         return load_config(profile)
 
 
+def account_network(profile, config):
+    subscription = profile["subscription_id"]
+    resource_id = (f"/subscriptions/{subscription}/resourceGroups/{config['resource_group']}"
+                   f"/providers/Microsoft.CognitiveServices/accounts/{config['account_name']}")
+    url = f"https://management.azure.com{resource_id}?api-version=2024-10-01"
+    account = azure(["rest", "--method", "get", "--url", url, "--subscription", subscription])
+    require(account["id"].lower() == resource_id.lower() and
+            account["kind"] == "OpenAI" and
+            account["properties"]["publicNetworkAccess"] == "Enabled" and
+            resource_host(account["properties"]["endpoint"]) == resource_host(config["endpoint"]) and
+            account["properties"]["provisioningState"] == "Succeeded",
+            "Foundry6 account identity or state changed; no network update made")
+    return url, account
+
+
+def network_rules(account):
+    return account["properties"].get("networkAcls")
+
+
+def require_network_rules(account, action, count):
+    rules = network_rules(account)
+    require(isinstance(rules, dict) and rules.get("defaultAction") == action and
+            rules.get("bypass") == "None" and
+            isinstance(rules.get("ipRules"), list) and len(rules["ipRules"]) == count and
+            not rules.get("virtualNetworkRules"),
+            "Foundry6 network rules changed; refusing to overwrite them")
+    return rules
+
+
+def set_network_rules(profile, config, action, ips, expected):
+    url, account = account_network(profile, config)
+    require(account["etag"] == expected, "Foundry6 was modified concurrently; no update made")
+    rules = {"defaultAction": action, "bypass": "None",
+             "ipRules": [{"value": ip} for ip in ips], "virtualNetworkRules": []}
+    azure(["rest", "--method", "patch", "--url", url,
+           "--subscription", profile["subscription_id"],
+           "--headers", f"If-Match={expected}",
+           "--body", json.dumps({"properties": {"networkAcls": rules}})])
+    _, updated = account_network(profile, config)
+    require(network_rules(updated) == rules, "Foundry6 network update was not confirmed")
+    return updated
+
+
+def session_ip():
+    require(sys.stdin.isatty(), "An interactive terminal is required for temporary IP access")
+    value = input("Indica tu IP publica IPv4 actual: ").strip()
+    try:
+        ip = ipaddress.IPv4Address(value)
+    except ipaddress.AddressValueError:
+        raise ValueError("Invalid public IPv4 address") from None
+    require(ip.is_global, "Expected a public IPv4 address")
+    return str(ip)
+
+
+@contextmanager
+def temporary_ip_access(profile, config, ip):
+    _, account = account_network(profile, config)
+    require_network_rules(account, "Deny", 0)
+    attempted = False
+    try:
+        attempted = True
+        set_network_rules(profile, config, "Deny", [ip], account["etag"])
+        print("Acceso temporal a Foundry6 activado para esta IP.", file=sys.stderr)
+        yield
+    finally:
+        if attempted:
+            _, account = account_network(profile, config)
+            require_network_rules(account, "Deny", 1)
+            rules = network_rules(account)
+            require(rules["ipRules"][0]["value"] == ip,
+                    "Foundry6 IP rule changed; manual cleanup required")
+            set_network_rules(profile, config, "Deny", [], account["etag"])
+            print("Acceso temporal a Foundry6 retirado.", file=sys.stderr)
+
+
+def run_with_temporary_ip(profile, config, command, env, ip):
+    with temporary_ip_access(profile, config, ip):
+        with subprocess.Popen(command, env=env) as child:
+            def stop_on_term(signum, frame):
+                child.terminate()
+                raise KeyboardInterrupt
+
+            previous = signal.signal(signal.SIGTERM, stop_on_term)
+            try:
+                return child.wait()
+            finally:
+                signal.signal(signal.SIGTERM, previous)
+                if child.poll() is None:
+                    child.terminate()
+                    try:
+                        child.wait(timeout=10)
+                    except subprocess.TimeoutExpired:
+                        child.kill()
+                        child.wait()
+
+
 def provider_env(parent, config, model, key, limits=None):
     require(model in config["models"], "Model not configured in this profile")
     settings = config["models"][model]
@@ -412,6 +511,11 @@ def main():
                         help="Use model context limits only when deployment TPM leaves 12.5%% headroom")
     runner.add_argument("--resume", nargs="?", const="",
                         help="Reanudar una sesion por ID o abrir el selector de sesiones")
+    runner.add_argument("--temporary-ip-access", action="store_true",
+                        help="Foundry6 only: allow this IP while Copilot is running")
+    access = commands.add_parser("access", help="Manage the Foundry6 test firewall")
+    access.add_argument("profile", choices=["foundry6"])
+    access.add_argument("action", choices=["prepare", "close", "revoke"])
     mode = runner.add_mutually_exclusive_group()
     mode.add_argument("--print-config", action="store_true")
     mode.add_argument("--smoke-test", action="store_true")
@@ -495,7 +599,27 @@ def main():
                               "primary_model_count": len(primary_models(config)),
                               "api_key_read": False, "inference_performed": False}, indent=2))
             return
+        if args.command == "access":
+            require(not extra, "Unexpected access arguments")
+            profile = read_profile(args.profile)
+            config = load_config_for_run(profile)
+            _, account = account_network(profile, config)
+            if args.action == "prepare":
+                require_network_rules(account, "Allow", 0)
+                set_network_rules(profile, config, "Deny", [], account["etag"])
+            elif args.action == "close":
+                require_network_rules(account, "Deny", 0)
+                set_network_rules(profile, config, "Allow", [], account["etag"])
+            else:
+                require_network_rules(account, "Deny", 1)
+                set_network_rules(profile, config, "Deny", [], account["etag"])
+            print(f"Foundry6 test access: {args.action} completed")
+            return
         name = profile_name(args.profile)
+        require(not args.temporary_ip_access or name == "foundry6",
+                "Temporary IP access is enabled only for foundry6")
+        require(not args.temporary_ip_access or not args.print_config,
+                "Temporary IP access requires launching Copilot or a smoke test")
         if args.resume is not None:
             require(not any(arg.split("=", 1)[0] in ("--resume", "-r", "--continue",
                                                      "--session-id") for arg in extra),
@@ -526,14 +650,22 @@ def main():
                               "effective_max_prompt_tokens": limits[0],
                               "effective_max_output_tokens": limits[1]}, indent=2))
             return
+        ip = session_ip() if args.temporary_ip_access else None
         key = secret(profile, profile.get("key_secret", KEY_SECRET))
         if args.smoke_test:
-            print(json.dumps(smoke_test(config, model, key), indent=2))
+            if ip is None:
+                result = smoke_test(config, model, key)
+            else:
+                with temporary_ip_access(profile, config, ip):
+                    result = smoke_test(config, model, key)
+            print(json.dumps(result, indent=2))
             return
         env = provider_env(os.environ, config, model, key, limits[:2])
         print(f"{name}: {model} -> {config['models'][model]['deployment']} "
               f"({resource_host(config['endpoint'])}); context {limits[0]} input / "
               f"{limits[1]} output tokens, quota {limits[2]} TPM", file=sys.stderr)
+        if ip is not None:
+            sys.exit(run_with_temporary_ip(profile, config, command, env, ip))
         os.execvpe("copilot", command, env)
     except (KeyboardInterrupt, EOFError):
         print("\nCancelado; no se ha iniciado Copilot.", file=sys.stderr)

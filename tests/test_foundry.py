@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 from subprocess import CompletedProcess
 
 
@@ -96,6 +96,166 @@ class LoginTests(unittest.TestCase):
                     foundry.load_config_for_run(PROFILE)
             run.assert_called_once()
             self.assertEqual(load.call_count, 2 if returncode == 0 else 1)
+
+
+class TemporaryAccessTests(unittest.TestCase):
+    IP = "8.8.8.8"
+
+    def account(self, action="Deny", ips=(), etag="etag-1"):
+        return {
+            "etag": etag,
+            "properties": {"networkAcls": {
+                "defaultAction": action, "bypass": "None",
+                "ipRules": [{"value": ip} for ip in ips], "virtualNetworkRules": [],
+            }},
+        }
+
+    def test_ip_requires_public_ipv4_without_contacting_third_parties(self):
+        for entered in ("127.0.0.1", "10.1.2.3", "not-an-ip", "2001:4860:4860::8888"):
+            with self.subTest(entered=entered), \
+                    patch.object(foundry.sys.stdin, "isatty", return_value=True), \
+                    patch("builtins.input", return_value=entered):
+                with self.assertRaises(ValueError):
+                    foundry.session_ip()
+        with patch.object(foundry.sys.stdin, "isatty", return_value=True), \
+                patch("builtins.input", return_value=self.IP), \
+                patch.object(foundry.subprocess, "run") as run:
+            self.assertEqual(foundry.session_ip(), self.IP)
+            run.assert_not_called()
+
+    def test_network_patch_checks_account_identity_etag_and_confirms_rules(self):
+        resource = (f"/subscriptions/{SUBSCRIPTION}/resourceGroups/rg-example"
+                    "/providers/Microsoft.CognitiveServices/accounts/oai-example")
+        account = {
+            "id": resource, "kind": "OpenAI", "etag": "etag-1",
+            "properties": {"publicNetworkAccess": "Enabled",
+                           "endpoint": config()["endpoint"], "provisioningState": "Succeeded",
+                           "networkAcls": self.account()["properties"]["networkAcls"]},
+        }
+        updated = json.loads(json.dumps(account))
+        updated["etag"] = "etag-2"
+        updated["properties"]["networkAcls"]["ipRules"] = [{"value": self.IP}]
+        with patch.object(foundry, "azure", side_effect=[account, None, updated]) as azure:
+            foundry.set_network_rules(PROFILE, config(), "Deny", [self.IP], "etag-1")
+        self.assertEqual(azure.call_count, 3)
+        args = azure.call_args_list[1].args[0]
+        self.assertIn(f"If-Match=etag-1", args)
+        self.assertIn(SUBSCRIPTION, args)
+        self.assertEqual(json.loads(args[args.index("--body") + 1])["properties"]["networkAcls"]
+                         ["ipRules"], [{"value": self.IP}])
+        with patch.object(foundry, "azure", return_value=account) as azure:
+            with self.assertRaisesRegex(ValueError, "concurrently"):
+                foundry.set_network_rules(PROFILE, config(), "Deny", [self.IP], "etag-old")
+        azure.assert_called_once()
+
+    def test_network_rejects_unexpected_rules(self):
+        for action, ips in (("Allow", ()), ("Deny", (self.IP,))):
+            with self.subTest(action=action, ips=ips), \
+                    self.assertRaises(ValueError):
+                foundry.require_network_rules(self.account(action, ips), "Deny", 0)
+
+    def test_temporary_access_cleans_up_on_success_and_child_failure(self):
+        for failure in (False, True):
+            state = self.account()
+            def read(*_):
+                return "url", state
+            def update(_profile, _config, action, ips, expected):
+                self.assertEqual(state["etag"], expected)
+                state["properties"]["networkAcls"]["defaultAction"] = action
+                state["properties"]["networkAcls"]["ipRules"] = [{"value": ip} for ip in ips]
+                state["etag"] += "x"
+                return state
+            with self.subTest(failure=failure), \
+                    patch.object(foundry, "account_network", side_effect=read), \
+                    patch.object(foundry, "set_network_rules", side_effect=update) as patch_rules, \
+                    patch.object(foundry.sys, "stderr", new_callable=io.StringIO):
+                if failure:
+                    with self.assertRaisesRegex(OSError, "launch failed"):
+                        with foundry.temporary_ip_access(PROFILE, config(), self.IP):
+                            raise OSError("launch failed")
+                else:
+                    with foundry.temporary_ip_access(PROFILE, config(), self.IP):
+                        self.assertEqual(state["properties"]["networkAcls"]["ipRules"],
+                                         [{"value": self.IP}])
+                self.assertEqual([call.args[3] for call in patch_rules.call_args_list],
+                                 [[self.IP], []])
+                self.assertEqual(state["properties"]["networkAcls"]["ipRules"], [])
+
+    def test_concurrent_change_does_not_overwrite_and_reports_cleanup_failure(self):
+        initial = self.account()
+        changed = self.account("Deny", ("1.1.1.1",), "etag-2")
+        with patch.object(foundry, "account_network", side_effect=[("url", initial),
+                                                                     ("url", changed)]), \
+                patch.object(foundry, "set_network_rules") as update:
+            with self.assertRaisesRegex(ValueError, "manual cleanup required"):
+                with foundry.temporary_ip_access(PROFILE, config(), self.IP):
+                    pass
+        update.assert_called_once()
+        with patch.object(foundry, "account_network",
+                          side_effect=[("url", initial),
+                                       ("url", self.account("Deny", (self.IP,)))]), \
+                patch.object(foundry, "set_network_rules",
+                             side_effect=ValueError("concurrently")) as update:
+            with self.assertRaisesRegex(ValueError, "concurrently"):
+                with foundry.temporary_ip_access(PROFILE, config(), self.IP):
+                    pass
+        self.assertEqual(update.call_count, 2)
+
+    def test_child_interrupt_terminates_process_and_removes_rule(self):
+        child = MagicMock()
+        child.__enter__.return_value = child
+        child.wait.side_effect = [KeyboardInterrupt(), None]
+        child.poll.return_value = None
+        with patch.object(foundry, "account_network",
+                          side_effect=[("url", self.account()),
+                                       ("url", self.account("Deny", (self.IP,), "etag-2"))]), \
+                patch.object(foundry, "set_network_rules") as update, \
+                patch.object(foundry.subprocess, "Popen", return_value=child), \
+                patch.object(foundry.signal, "signal"), \
+                patch.object(foundry.sys, "stderr", new_callable=io.StringIO):
+            with self.assertRaises(KeyboardInterrupt):
+                foundry.run_with_temporary_ip(PROFILE, config(), ["copilot"], {}, self.IP)
+        child.terminate.assert_called_once()
+        self.assertEqual([call.args[3] for call in update.call_args_list], [[self.IP], []])
+
+    def test_access_commands_validate_expected_state_before_updating(self):
+        for action, before, after in (("prepare", "Allow", "Deny"),
+                                      ("close", "Deny", "Allow"),
+                                      ("revoke", "Deny", "Deny")):
+            ips = (self.IP,) if action == "revoke" else ()
+            with self.subTest(action=action), \
+                    patch.object(foundry.sys, "argv",
+                                 ["foundry.py", "access", "foundry6", action]), \
+                    patch.object(foundry, "read_profile", return_value=PROFILE), \
+                    patch.object(foundry, "load_config_for_run", return_value=config()), \
+                    patch.object(foundry, "account_network",
+                                 return_value=("url", self.account(before, ips))), \
+                    patch.object(foundry, "set_network_rules") as update, \
+                    patch("builtins.print"):
+                foundry.main()
+                self.assertEqual(update.call_args.args[2:4], (after, []))
+        with patch.object(foundry.sys, "argv", ["foundry.py", "access", "foundry6", "close"]), \
+                patch.object(foundry, "read_profile", return_value=PROFILE), \
+                patch.object(foundry, "load_config_for_run", return_value=config()), \
+                patch.object(foundry, "account_network",
+                             return_value=("url", self.account("Deny", (self.IP,)))), \
+                patch.object(foundry, "set_network_rules") as update, \
+                patch.object(foundry.sys, "stderr", new_callable=io.StringIO):
+            with self.assertRaises(SystemExit) as error:
+                foundry.main()
+        self.assertEqual(error.exception.code, 1)
+        update.assert_not_called()
+
+    def test_non_foundry6_cannot_request_temporary_access(self):
+        with patch.object(foundry.sys, "argv",
+                          ["foundry.py", "run", "foundry1", "--temporary-ip-access",
+                           "--model", "gpt-6-sol"]), \
+                patch.object(foundry, "read_profile") as profile, \
+                patch.object(foundry.sys, "stderr", new_callable=io.StringIO):
+            with self.assertRaises(SystemExit) as error:
+                foundry.main()
+        self.assertEqual(error.exception.code, 1)
+        profile.assert_not_called()
 
 
 class ProfileTests(unittest.TestCase):

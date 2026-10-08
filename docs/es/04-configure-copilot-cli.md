@@ -65,6 +65,45 @@ Este modo evita el limite conservador por peticion; concurrencia, estimacion
 de tokens y otros consumidores pueden seguir causando 429, y los contextos
 grandes cuestan mas. No solicita cuota ni modifica deployments.
 
+## Foundry6: prueba de IP publica temporal
+
+Esta prueba opcional modifica la ACL de red de **toda la cuenta Azure OpenAI**,
+no Key Vault ni un deployment aislado. El operador necesita acceso por Entra ID
+al vault y permisos para modificar la cuenta OpenAI. Se comprueba la sesion de
+Entra antes de cambiar la ACL; Copilot sigue utilizando la API key del vault
+para inferencia. No demuestra autenticacion de inferencia mediante Entra.
+
+Prepara la prueba una vez desde el checkout (requiere una ACL `Allow` previa
+sin reglas IP ni redes virtuales):
+
+```bash
+python3 scripts/foundry.py access foundry6 prepare
+Copilot-foundry6
+python3 scripts/foundry.py access foundry6 close
+```
+
+`prepare` bloquea todas las IP publicas de la cuenta Foundry6 hasta iniciar
+una sesion temporal. El atajo **exclusivo de Foundry6** debe pasar
+`--temporary-ip-access` a `scripts/foundry.py run foundry6`. El lanzador pide
+la **IPv4 publica de salida** actual: compruebala por tu cuenta antes de
+introducirla (VPN o proxy pueden cambiarla). Valida el formato pero no consulta
+ni transmite la IP a servicios externos de deteccion. Solo permite esa IP
+mientras se ejecuta Copilot y retira la regla al salir. Para una prueba de
+inferencia con coste, ejecuta
+`python3 scripts/foundry.py run foundry6 --temporary-ip-access --model MODELO --smoke-test`.
+`close` restaura `Allow` sin reglas **solo cuando hayan terminado todas las
+sesiones**.
+
+Una caida del equipo o de la conexion puede impedir la limpieza; no existe
+caducidad automatica en Azure. Desde una sesion autorizada, ejecuta
+`python3 scripts/foundry.py access foundry6 revoke` para retirar la unica
+regla IP temporal, confirma su retirada y luego ejecuta `close` al terminar.
+No ejecutes `revoke` mientras otra sesion de Foundry6 usa esa regla: se
+rechazan las ACL inesperadas y los cambios concurrentes. Una lista de IP
+permitidas no autentica al usuario: cualquiera desde esa salida con una API
+key valida puede acceder a la cuenta. Comprueba el bloqueo desde otra red
+antes de afirmar que la restriccion funciona de extremo a extremo.
+
 ## Cambio y diagnóstico
 
 El lanzador de proveedor único fija endpoint y deployment al arrancar.

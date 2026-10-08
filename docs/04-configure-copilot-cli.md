@@ -63,6 +63,44 @@ This opts out of the conservative per-request cap; parallel requests, rate
 estimation and shared usage can still produce 429, and large contexts cost more.
 The flag does not request quota or modify Azure deployments.
 
+## Foundry6: temporary public IP test
+
+This opt-in test changes **Azure OpenAI account-wide** network ACLs, not Key
+Vault or a single deployment. The operator must have Entra ID access to read
+the vault and permission to update the OpenAI account. A valid Entra session
+is checked before each update; Copilot still uses the vault's API key for
+inference. Do not use this as proof of Entra-based inference authentication.
+
+Prepare once from the repository checkout (requires an existing `Allow` ACL
+without IP or virtual network rules):
+
+```bash
+python3 scripts/foundry.py access foundry6 prepare
+Copilot-foundry6
+python3 scripts/foundry.py access foundry6 close
+```
+
+`prepare` blocks all public IPs on the Foundry6 account until a temporary
+session starts. The **Foundry6-only** shortcut must pass
+`--temporary-ip-access` to `scripts/foundry.py run foundry6`. The launcher
+prompts for the current **public IPv4 egress address**; check it independently
+before entering it (VPNs/proxies may change egress). It validates the address
+format but does not discover or transmit it to an IP-lookup service. It allows
+that IP only while the Copilot child process runs, then removes the rule on
+exit. For a billable inference check instead, run
+`python3 scripts/foundry.py run foundry6 --temporary-ip-access --model MODEL --smoke-test`.
+`close` restores `Allow` with zero rules **only after all sessions have ended**.
+
+If a machine crashes or connectivity is lost, cleanup cannot be guaranteed:
+there is no Azure-side expiry. From an authorized session, run
+`python3 scripts/foundry.py access foundry6 revoke` to remove the single
+temporary IP rule, confirm it has been removed, and then `close` when done.
+Never run `revoke` while another Foundry6 session is using the rule; unexpected
+ACLs or concurrent changes are refused, not overwritten. An IP allowlist is
+not user authentication: anyone at the allowed egress with a valid API key
+can reach this account. Validate denial from a separate egress network before
+asserting that the network restriction works end-to-end.
+
 ## Switching and diagnostics
 
 The current singular-provider launcher fixes endpoint and wire deployment at
