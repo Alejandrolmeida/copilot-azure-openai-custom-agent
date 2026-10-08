@@ -16,6 +16,14 @@ or explicitly accept broad network reachability with `allow_public_access`.
 New vaults have RBAC, 90-day retention and purge protection; understand the
 irreversible protection before approving creation.
 
+For public access choose `public_selected_ips` (default deny with nonempty,
+approved public egress IPs on **both** Azure OpenAI and Key Vault) when stable
+egress is available. `public_any_ip` allows access from any IP and requires
+explicit approval and documented acceptance of the increased residual risk.
+Neither option dispenses with authentication: the client uses Entra to read
+Key Vault and an API key for inference. Private Endpoints and private DNS are
+an alternative architecture, not part of this template.
+
 Inspect model availability without inference:
 
 ```bash
@@ -57,6 +65,14 @@ Bicep runs incrementally. No secret values appear in parameters or outputs.
 After confirmed deployment, [initialize Key Vault](07-portable-keyvault-bootstrap.md).
 A failed/partial apply must be inspected in ARM before retrying; do not delete
 pre-existing resources as rollback. Preserve private reports and resource identity.
+
+Before running the client, inspect effective firewall settings on **both**
+services, RBAC, local authentication and monitoring in Azure. In particular,
+reused resources retain their access controls; the template does not configure
+diagnostic settings or security alerts for new ones. Key Vault firewall rules
+cannot restrict use of an API key already copied from the vault. See the
+[public-access security posture and acceptance gates](06-security.md#public-access-security-posture)
+before using non-synthetic data.
 
 Sources: [Bicep](https://learn.microsoft.com/azure/azure-resource-manager/bicep/overview),
 [what-if](https://learn.microsoft.com/azure/azure-resource-manager/bicep/deploy-what-if).

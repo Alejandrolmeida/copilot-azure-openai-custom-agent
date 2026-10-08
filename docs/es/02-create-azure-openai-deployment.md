@@ -16,6 +16,15 @@ en `allowed_ips`, o acepta acceso de red amplio mediante `allow_public_access`.
 Los vaults nuevos usan RBAC, retención de 90 días y protección de purga:
 comprende esa protección irreversible antes de aprobar.
 
+Para acceso público, elige `public_selected_ips` (denegación predeterminada
+con IP públicas de salida autorizadas y no vacías **tanto** en Azure OpenAI
+como en Key Vault) si dispones de salida estable. `public_any_ip` permite
+acceso desde cualquier IP y exige aprobación explícita y aceptación
+documentada del mayor riesgo residual. Ninguna opción elimina la autenticación:
+el cliente usa Entra para leer Key Vault y una clave API para inferencia.
+Private Endpoints y DNS privado son una arquitectura alternativa, no forman
+parte de esta plantilla.
+
 Consulta disponibilidad sin inferencia:
 
 ```bash
@@ -57,6 +66,14 @@ Bicep usa modo incremental. No hay secretos en parámetros ni outputs.
 Después del despliegue, [inicializa Key Vault](07-portable-keyvault-bootstrap.md).
 Ante aplicación parcial/fallida, inspecciona ARM antes de repetir. No borres
 recursos previos como rollback; conserva los informes privados y las identidades.
+
+Antes de ejecutar el cliente, inspecciona en Azure los firewalls efectivos de
+**ambos** servicios, RBAC, autenticación local y monitorización. Los recursos
+reutilizados conservan sus controles de acceso; la plantilla no configura
+diagnósticos ni alertas de seguridad para los nuevos. El firewall de Key Vault
+no restringe el uso de una clave API ya copiada del vault. Consulta la
+[posición de seguridad y pruebas de aceptación](06-security.md#posición-de-seguridad-del-acceso-público)
+antes de usar datos no sintéticos.
 
 Fuentes: [Bicep](https://learn.microsoft.com/azure/azure-resource-manager/bicep/overview),
 [what-if](https://learn.microsoft.com/azure/azure-resource-manager/bicep/deploy-what-if).
