@@ -6,6 +6,7 @@ import sys
 import tempfile
 import unittest
 from unittest.mock import patch
+from zipfile import ZipFile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 import check_public
@@ -255,6 +256,42 @@ class PublicationTests(unittest.TestCase):
     def test_public_examples_have_no_privacy_matches(self):
         for file in (ROOT / "examples").glob("*.json"):
             self.assertFalse(check_public.findings(file.read_text()), file.name)
+
+    def test_architecture_word_is_allowlisted_and_inspected(self):
+        relative = check_public.ARCHITECTURE_DOC
+        self.assertIn(relative, check_public.public_files())
+        self.assertEqual(check_public.inspect_architecture_doc(ROOT / relative), [])
+
+    def test_word_rejects_unexpected_parts_and_private_content(self):
+        original = ROOT / check_public.ARCHITECTURE_DOC
+        with tempfile.TemporaryDirectory() as folder:
+            target = Path(folder) / "test.docx"
+            with ZipFile(original) as source, ZipFile(target, "w") as dest:
+                for name in source.namelist():
+                    content = source.read(name)
+                    if name == "word/document.xml":
+                        content = content.replace(b"</w:body>", b"<w:p><w:r><w:t>"
+                                                  b"person@" + b"company.invalid"
+                                                  b"</w:t></w:r></w:p></w:body>")
+                    dest.writestr(name, content)
+            self.assertTrue(any("personal-email" in error
+                                for error in check_public.inspect_architecture_doc(target)))
+            with ZipFile(original) as source, ZipFile(target, "w") as dest:
+                for name in source.namelist():
+                    content = source.read(name)
+                    if name == "word/document.xml":
+                        content = content.replace(
+                            b"</w:body>",
+                            b"<w:p><w:r><w:t>person@</w:t></w:r>"
+                            b"<w:r><w:t>company.invalid</w:t></w:r></w:p></w:body>",
+                        )
+                    dest.writestr(name, content)
+            self.assertTrue(any("personal-email" in error
+                                for error in check_public.inspect_architecture_doc(target)))
+            with ZipFile(target, "a") as archive:
+                archive.writestr("word/embeddings/customer-data.bin", b"private")
+            with self.assertRaisesRegex(ValueError, "Unexpected"):
+                check_public.inspect_architecture_doc(target)
 
 
 if __name__ == "__main__":
