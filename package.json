@@ -7,6 +7,6 @@
     "lint:docs": "markdownlint-cli2 \"*.md\" \"docs/**/*.md\" \".github/**/*.md\""
   },
   "devDependencies": {
-    "markdownlint-cli2": "0.18.1"
+    "markdownlint-cli2": "0.23.3"
   }
 }
