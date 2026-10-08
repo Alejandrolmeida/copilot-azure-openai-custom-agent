@@ -76,11 +76,6 @@ Context limits, TPM/RPM and money are separate. Budgets send alerts, not hard st
 10. [Troubleshooting](docs/troubleshooting.md)
 11. [Configuration contract](docs/11-multimodel-profiles.md)
 
-The [project architecture document (Spanish Word)](docs/arquitectura-copilot-azure-openai.docx)
-includes diagrams, architectural decisions, security baselines and open gaps.
-It describes source and templates, not an audited Azure deployment. The external
-Word guides used for comparison are not published.
-
 ## Development
 
 ```bash
@@ -91,10 +86,6 @@ npm run lint:docs
 python3 scripts/check_docs.py
 python3 scripts/check_public.py
 ```
-
-To regenerate the Word file, install `python-docx` and `Pillow` in a local
-environment and run `python scripts/generate_architecture_doc.py`. Review its
-text, diagrams, metadata and internal relationships before publication.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md) and
 [CHANGELOG.md](CHANGELOG.md). Public examples are synthetic. Never commit

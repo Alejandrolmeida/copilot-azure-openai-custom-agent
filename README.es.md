@@ -77,11 +77,6 @@ Los presupuestos envían alertas, no detienen el gasto.
 10. [Solución de problemas](docs/es/troubleshooting.md)
 11. [Contrato de configuración](docs/es/11-multimodel-profiles.md)
 
-El [documento de arquitectura del proyecto (Word)](docs/arquitectura-copilot-azure-openai.docx)
-contiene diagramas, decisiones, líneas base y brechas pendientes. Describe el
-repositorio y las plantillas, no acredita un entorno Azure real. Las guías Word
-externas usadas para el contraste no se publican.
-
 ## Desarrollo
 
 ```bash
@@ -92,10 +87,6 @@ npm run lint:docs
 python3 scripts/check_docs.py
 python3 scripts/check_public.py
 ```
-
-Para regenerar el Word, instala `python-docx` y `Pillow` en un entorno local y
-ejecuta `python scripts/generate_architecture_doc.py`. Revisa texto, diagramas,
-metadatos y relaciones internas antes de publicarlo.
 
 Consulta [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md) y
 [CHANGELOG.md](CHANGELOG.md). Los ejemplos son sintéticos. No publiques perfiles
