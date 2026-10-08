@@ -1,93 +1,32 @@
 # Solución de problemas
 
-🌐 Idioma: [English](../troubleshooting.md) | Español
+[English](../troubleshooting.md) | Español
 
-## `ERROR: AZURE_OPENAI_BASE_URL is required`
+| Síntoma | Comprobación |
+|---|---|
+| No aparece el lanzador | Instala localmente y añade `~/.local/bin` al PATH del shell real |
+| Error de modelo sin interacción | Pasa `--model`; el selector requiere terminal |
+| Conflicto de perfil | Inspecciona/respalda archivo o symlink; no sobrescribas a ciegas |
+| Login Azure o 403 | Login WSL, tenant, suscripción y permisos acotados correctos |
+| 401 | Cuenta/clave y política de autenticación; nunca imprimas la clave |
+| 404 | Deployment exacto, cuenta y API; revisa llamadas auxiliares aparte |
+| 429 | RPM/TPM, PCs concurrentes y Retry-After; no aumentes cuota silenciosamente |
+| Modelo ausente en editor | Registra un proveedor; variables de terminal no lo registran |
+| BYOK desaparece en editor | Destino de sesión Local y rol Agent |
+| Importador no disponible | Host/perfil y comando nativo correctos; usa el diálogo seguro |
+| What-if rechaza cambios | La herramienta crea/reutiliza; modificar/borrar requiere otra operación revisada |
+| Inicialización parcial del vault | Revisa qué secreto existe; no sobrescribas ni rotes automáticamente |
+| Sesión antigua no disponible | El historial local/remoto difiere entre PCs; no copies cachés privados |
 
-Crea `.env` desde el ejemplo y rellénalo:
+Usa `doctor` antes de inferencia. Conserva en privado `--print-config`, informes
+ARM e imports. Comparte solo códigos y pasos saneados, nunca logs completos.
+No resuelvas errores concediendo Owner, activando autenticación prohibida,
+usando `--allow-all`, aumentando límites a ciegas o reescribiendo ajustes globales.
 
-```bash
-cp examples/.env.example .env
-```
-
-## `HTTP ERROR 401`
-
-Causas probables:
-
-- clave de API incorrecta
-- la clave pertenece a otro recurso de Azure OpenAI
-- espacios en blanco copiados alrededor de la clave
-- uso de un token bearer donde se espera una clave de API
-
-## `HTTP ERROR 404`
-
-Causas probables:
-
-- endpoint incorrecto
-- nombre de implementación incorrecto
-- la implementación del modelo sigue en aprovisionamiento
-- uso de `/openai/v1` donde el cliente espera solo el host del recurso, o al
-  revés
-
-Para pruebas de humo directas, usa:
-
-```text
-https://YOUR-AZURE-OPENAI-RESOURCE.openai.azure.com/openai/v1/
-```
-
-Para `COPILOT_PROVIDER_BASE_URL` de Copilot CLI, usa:
-
-```text
-https://YOUR-AZURE-OPENAI-RESOURCE.openai.azure.com
-```
-
-## El modelo responde sin contenido visible
-
-Los modelos con razonamiento pueden gastar presupuesto de salida en tokens de
-razonamiento interno. Aumenta:
-
-```bash
-AZURE_OPENAI_MAX_COMPLETION_TOKENS=16384
-COPILOT_PROVIDER_MAX_OUTPUT_TOKENS=16384
-```
-
-## Los subagentes siguen mostrando modelos Claude predeterminados
-
-Reinicia Copilot CLI después de ejecutar el wrapper:
-
-```bash
-./examples/copilot-azure-wrapper.sh
-```
-
-Después revisa:
-
-```bash
-jq '.subagents.agents' ~/.copilot/settings.json
-```
-
-Dentro de Copilot CLI, abre:
-
-```text
-/subagents
-```
-
-## VS Code no muestra mi modelo personalizado
-
-La disponibilidad de modelos en VS Code depende de capacidades de GitHub
-Copilot, configuración de la organización, versión de la extensión y registro de
-modelos personalizados. La configuración de workspace solo selecciona un modelo
-después de que esté disponible en VS Code.
-
-## No se encuentra el comando Copilot CLI
-
-Instala:
-
-```bash
-npm install -g @github/copilot
-```
-
-Después verifica:
-
-```bash
-copilot --version
-```
+Al ejecutar un acceso `copilot-<perfil>`, el lanzador comprueba la identidad y el
+acceso a ARM y Key Vault. Si falta la sesión o el token ha caducado o se ha
+revocado (por ejemplo, `AADSTS50173`), abre un login por código de dispositivo
+para el tenant del perfil y reintenta la validación una vez. Completa el login
+y el MFA en el navegador. Los errores de permisos o red no inician un login.
+Sin terminal interactiva, muestra el comando de login y termina; `doctor`
+conserva su comportamiento de solo lectura. No hace falta ejecutar `az logout`.

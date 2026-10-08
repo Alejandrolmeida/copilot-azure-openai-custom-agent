@@ -1,75 +1,63 @@
-# 03. Configure Visual Studio Code
+# 03. Register VS Code providers securely
 
-🌐 Language: English | [Español](es/03-configure-vscode.md)
+English | [Español](es/03-configure-vscode.md)
 
-Visual Studio Code and GitHub Copilot can select models exposed by your GitHub
-Copilot plan and organization policies. Custom/BYOK model availability in
-VS Code may depend on preview features, enterprise policy, extension version,
-and how your organization registers custom models.
+Terminal environment variables and model-selection workspace settings do not
+register editor providers. Use Custom Endpoint groups and the editor's native
+credential service. Never put API keys in JSON or copy another PC's SQLite.
 
-This repository provides a safe template for workspace settings and terminal
-environment variables.
-
-## Example workspace settings
-
-Copy the example file into your project or adapt it manually:
+Use v2 profiles with reviewed capabilities. Generate a **private, key-free** request:
 
 ```bash
-cp examples/vscode-settings.example.jsonc .vscode/settings.json
+python3 scripts/vscode_config.py work --output "$HOME/foundry-editor-import.json"
 ```
 
-Then replace:
+Multiple profile names are accepted. Primary models only are exported.
+Each model uses its deployment ID, full Responses URL, declared tool/vision
+capabilities and individual input/context/output limits. Automated import is
+verified for Responses only; use the editor's secure dialog for other APIs.
 
-```text
-YOUR_MODEL_ID_OR_DEPLOYMENT_ALIAS
-YOUR-AZURE-OPENAI-RESOURCE
-YOUR_DEPLOYMENT_NAME
-```
+## Stable fallback: secure dialog
 
-## Model selection settings
+Create one Custom Endpoint group per account through the editor. Use its
+credential field, not chat or a terminal echo, to supply the account key.
+Use the generated group's models as metadata; do not copy an `apiKey`
+reference from another machine. Preserve unrelated providers.
 
-The relevant VS Code settings are:
+## Optional experimental importer
 
-```jsonc
-{
-  "github.copilot.selectedCompletionModel": "YOUR_MODEL_ID_OR_DEPLOYMENT_ALIAS",
-  "github.copilot.chat.askAgent.model": "YOUR_MODEL_ID_OR_DEPLOYMENT_ALIAS",
-  "github.copilot.chat.implementAgent.model": "YOUR_MODEL_ID_OR_DEPLOYMENT_ALIAS",
-  "github.copilot.chat.exploreAgent.model": "YOUR_MODEL_ID_OR_DEPLOYMENT_ALIAS",
-  "chat.agent.thinkingStyle": "inline"
-}
-```
+The source under `tools/vscode-import/` implements an explicit command, not an
+auto-running workspace hook. It checks workspace trust, Linux/WSL host, Azure
+identity, vault, endpoint and model metadata before reading a key.
 
-## Terminal variables
+Use the VSIX from a reviewed release. Developers can build a non-publishable
+test VSIX with `python3 scripts/build_release.py --allow-dirty`.
+Install it in the intended Linux/WSL extension host using **Install from VSIX**.
+Run **Foundry: Import Reviewed Profiles (Experimental)** from the command palette.
 
-These variables are useful for scripts opened inside VS Code terminals:
+Choose the generated request and the active profile's `chatLanguageModels.json`.
+For Windows stable/default profile it is under `%APPDATA%\Code\User`; from WSL
+select its `/mnt/c/...` path. Named profiles, Insiders and portable installs
+can differ. Create/open the file through the editor first if it does not exist.
 
-```jsonc
-{
-  "terminal.integrated.env.linux": {
-    "AZURE_OPENAI_BASE_URL": "https://YOUR-AZURE-OPENAI-RESOURCE.openai.azure.com/openai/v1/",
-    "AZURE_OPENAI_MODEL": "YOUR_DEPLOYMENT_NAME",
-    "AZURE_OPENAI_MAX_COMPLETION_TOKENS": "16384"
-  }
-}
-```
+Review the modal confirmation. The importer backs up the JSON privately,
+imports groups sequentially and verifies persistence and preservation.
+An identical existing group is skipped; a conflicting group stops the import.
+After partial failure, inspect the active profile before retrying. No automatic
+secret deletion or broad rollback occurs.
 
-Do not place API keys in committed workspace settings. Use a local `.env`, user
-settings, keychain, Azure Key Vault, or another secret manager.
+It uses `lm.addLanguageModelsProviderGroup`, an **internal, version-dependent**
+command. If unavailable, use the secure dialog. `context.secrets.store()` in
+an arbitrary extension has a different namespace; it cannot manufacture core
+`${input:chat.lm.secret...}` references. Negative IDs are valid.
 
-## Verify in VS Code
+Uninstall the temporary extension after verification. Its private JSON backup
+lives under `~/.local/state/copilot-foundry/vscode/`. Never publish that directory.
 
-1. Reload VS Code: **Developer: Reload Window**.
-2. Open GitHub Copilot Chat.
-3. Check the model picker or use the model selector UI.
-4. Ask a simple prompt.
-5. If the model does not appear, check your Copilot plan, organization policy,
-   and extension version.
+## Real validation
 
-## Important difference from Copilot CLI
-
-The Copilot CLI has explicit BYOK environment variables such as
-`COPILOT_PROVIDER_BASE_URL`. VS Code model registration and availability may be
-managed by GitHub Copilot settings, organization policies, or extension
-features. The workspace settings in this tutorial select a model once it is
-available to VS Code; they do not create the Azure provider by themselves.
+Choose session target **Local** and role **Agent**, then the profile-labelled
+model. These are separate controls; Agent Host/Copilot sessions may expose a
+different model list. Test creation and reading of a **new** file with approved
+small inference. Record actual combinations tested; JSON registration alone
+is not a successful chat/tool test.

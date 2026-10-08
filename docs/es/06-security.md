@@ -1,76 +1,42 @@
-# 06. Recomendaciones de seguridad
+# 06. Seguridad y publicación
 
-🌐 Idioma: [English](../06-security.md) | Español
+[English](../06-security.md) | Español
 
-## Nunca confirmes secretos
+Guarda fuera del repositorio perfiles reales, IDs de tenant/suscripción, recursos,
+endpoints, correos, logs, imports e informes. Los identificadores operativos no
+siempre son credenciales, pero son privados según la política del proyecto.
+Usa ejemplos sintéticos; no publiques una guía de tu instalación real.
 
-No confirmes:
+La configuración es JSON validado, nunca `source` ni `eval`. Las claves viajan
+en memoria por HTTPS, no en argumentos ni archivos compartidos. El filtrado del
+entorno no aísla frente a root ni procesos controlados por el mismo usuario.
+No actives trazas, vuelques cuerpos de petición ni subas historiales completos.
 
-- Claves de API
-- `.env`
-- Tokens de acceso personal
-- Identificadores de tenant si son sensibles en tu organización
-- Endpoints privados
-- Nombres de clientes
-- Nombres internos de proyectos
+El consumidor necesita lectura. Los escritores y operadores de infraestructura
+requieren permisos separados y acotados; ninguna herramienta concede Owner
+para resolver errores. No debilites políticas del tenant o firewall para una prueba.
 
-El `.gitignore` de este repositorio excluye `.env` y `.env.*`.
+VS Code debe crear secretos cifrados propios en cada equipo. No edites ni copies
+`state.vscdb`, inventes referencias o sustituyas el servicio core por el
+namespace de secretos de una extensión cualquiera.
 
-## Prefiere gestores de secretos
-
-Para desarrollo local puedes usar:
-
-- Azure Key Vault
-- Secretos de GitHub Codespaces
-- Keychain del sistema operativo
-- Gestores de contraseñas
-- Variables de entorno inyectadas por tu perfil de shell
-
-## Patrón con Azure Key Vault
-
-Guarda tu clave de Azure OpenAI:
+## Antes de publicar
 
 ```bash
-az keyvault secret set \
-  --vault-name YOUR_KEY_VAULT_NAME \
-  --name azure-openai-api-key \
-  --value YOUR_API_KEY
+python3 scripts/check_public.py
+gitleaks dir . --redact --no-banner
+gitleaks git . --redact --no-banner
 ```
 
-Después configura `.env` sin la clave:
+El comprobador de privacidad detecta ciertos patrones operativos; Gitleaks,
+patrones de credenciales. Ninguno garantiza ausencia absoluta de secretos.
+Revisa el diff preparado y el contenido de la release. No uses `git add .`
+sin revisión, exportes todas las referencias locales ni uses `git push --mirror`.
+Puede haber checkpoints privados aunque sus archivos no tengan seguimiento.
 
-```bash
-AZURE_KEYVAULT_NAME=YOUR_KEY_VAULT_NAME
-AZURE_KEYVAULT_SECRET_NAME=azure-openai-api-key
-AZURE_SUBSCRIPTION_ID=YOUR_SUBSCRIPTION_ID
-```
+Mantén secret scanning y push protection. CI no debe recibir secretos Azure
+ni aprovisionar desde PRs. Si se publica un secreto, revoca/rota primero;
+acuerda cualquier reescritura de historia aparte. Borrarlo del último commit
+no lo elimina de forks, cachés o commits anteriores.
 
-El wrapper puede cargar el secreto en tiempo de ejecución.
-
-Para una configuración totalmente portable donde endpoint, nombre de
-implementación, identidad de modelo, presupuestos de tokens y nombre del secreto
-de la clave se cargan desde Key Vault después de `az login`, consulta
-[07. Bootstrap portable con Azure Key Vault](07-portable-keyvault-bootstrap.md).
-
-## Privilegio mínimo
-
-- Usa recursos separados para experimentación.
-- Rota las claves con regularidad.
-- Restringe el acceso de red cuando sea posible.
-- Usa identidad administrada o Microsoft Entra ID cuando tu cliente y servicio
-  lo admitan.
-- Supervisa el uso de tokens y los costes.
-
-## Lista de comprobación para un tutorial público
-
-Antes de publicar un repo:
-
-```bash
-grep -R --line-number \
-  -E 'sk-|api[_-]?key|secret|tenant|subscription|openai.azure.com' . \
-  --exclude-dir=.git \
-  --exclude=.env.example
-```
-
-Revisa cada coincidencia. Los endpoints de marcador de posición están bien; los
-valores reales no.
+Consulta [SECURITY.md](../../SECURITY.md) para informar confidencialmente.

@@ -1,0 +1,21 @@
+{
+  "schema_version": 2,
+  "subscription_id": "00000000-0000-0000-0000-000000000001",
+  "resource_group": "rg-example",
+  "account_name": "oai-example",
+  "endpoint": "https://oai-example.openai.azure.com",
+  "models": {
+    "gpt-5-mini": {
+      "deployment": "coding",
+      "context_window": 400000,
+      "max_prompt_tokens": 272000,
+      "max_output_tokens": 128000,
+      "wire_api": "responses",
+      "tool_calling": true,
+      "vision": true,
+      "role": "primary",
+      "source": "https://ai.azure.com/catalog/models/gpt-5-mini",
+      "verified_at": "2026-10-03"
+    }
+  }
+}

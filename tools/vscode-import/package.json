@@ -1,0 +1,16 @@
+{
+  "name": "foundry-profile-import",
+  "publisher": "community-foundry-client",
+  "displayName": "Foundry Profile Import (Experimental)",
+  "description": "Explicit one-time import through VS Code's native encrypted credential service.",
+  "version": "2.0.0",
+  "license": "MIT",
+  "engines": {"vscode": "^1.100.0"},
+  "main": "./extension.js",
+  "extensionKind": ["workspace"],
+  "activationEvents": ["onCommand:foundry.importProfiles"],
+  "capabilities": {"untrustedWorkspaces": {"supported": false}},
+  "contributes": {
+    "commands": [{"command": "foundry.importProfiles", "title": "Foundry: Import Reviewed Profiles (Experimental)"}]
+  }
+}

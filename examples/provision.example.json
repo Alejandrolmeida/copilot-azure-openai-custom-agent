@@ -1,0 +1,18 @@
+{
+  "tenant_id": "00000000-0000-0000-0000-000000000002",
+  "subscription_id": "00000000-0000-0000-0000-000000000001",
+  "resource_group": "rg-example",
+  "location": "eastus2",
+  "account_name": "oai-example",
+  "vault_name": "kv-example",
+  "create_resource_group": false,
+  "use_existing_account": true,
+  "use_existing_vault": true,
+  "allow_public_access": false,
+  "allowed_ips": [],
+  "reader_object_id": "",
+  "budget_amount": 0,
+  "budget_start": "",
+  "budget_emails": [],
+  "deployments": []
+}

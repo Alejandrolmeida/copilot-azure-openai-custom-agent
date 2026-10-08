@@ -1,92 +1,32 @@
 # Troubleshooting
 
-🌐 Language: English | [Español](es/troubleshooting.md)
+English | [Español](es/troubleshooting.md)
 
-## `ERROR: AZURE_OPENAI_BASE_URL is required`
+| Symptom | Check |
+|---|---|
+| Launcher not found | Install locally and add `~/.local/bin` to the actual shell's PATH |
+| Noninteractive model error | Pass `--model`; the selector requires a terminal |
+| Profile conflict | Inspect/backup the file or symlink; never overwrite blindly |
+| Azure login or 403 | Correct WSL login, tenant, subscription and scoped permissions |
+| 401 | Correct account/key and supported authentication policy; never print the key |
+| 404 | Exact deployment name, account and API route; inspect auxiliary calls separately |
+| 429 | RPM and TPM, concurrent PCs, Retry-After; no silent quota increase |
+| Model absent in editor | Register a provider; terminal variables do not register it |
+| BYOK disappears in editor | Select Local session target and Agent role |
+| Importer unavailable | Correct host/profile and native command; use the secure dialog fallback |
+| What-if refuses update | This tool creates/reuses; modifying/deleting resources requires a separate reviewed operation |
+| Partial vault initialization | Inspect which secret exists; do not overwrite or rotate automatically |
+| Old session unavailable | Remote/local history differs between PCs; do not copy private caches |
 
-Create `.env` from the example and fill it:
+Use `doctor` before inference. Keep `--print-config`, ARM reports and imports
+private. Share only sanitized error codes and steps, never complete logs.
+Do not solve errors by granting Owner, enabling blocked authentication, using
+`--allow-all`, increasing token limits blindly or rewriting global settings.
 
-```bash
-cp examples/.env.example .env
-```
-
-## `HTTP ERROR 401`
-
-Likely causes:
-
-- wrong API key
-- key belongs to another Azure OpenAI resource
-- copied whitespace around the key
-- using a bearer token where an API key is expected
-
-## `HTTP ERROR 404`
-
-Likely causes:
-
-- wrong endpoint
-- wrong deployment name
-- model deployment is still provisioning
-- using `/openai/v1` where the client expects only the resource host, or vice
-  versa
-
-For direct smoke tests, use:
-
-```text
-https://YOUR-AZURE-OPENAI-RESOURCE.openai.azure.com/openai/v1/
-```
-
-For Copilot CLI `COPILOT_PROVIDER_BASE_URL`, use:
-
-```text
-https://YOUR-AZURE-OPENAI-RESOURCE.openai.azure.com
-```
-
-## Model replies with no visible content
-
-Reasoning-capable models may spend output budget on internal reasoning tokens.
-Increase:
-
-```bash
-AZURE_OPENAI_MAX_COMPLETION_TOKENS=16384
-COPILOT_PROVIDER_MAX_OUTPUT_TOKENS=16384
-```
-
-## Subagents still show default Claude models
-
-Restart Copilot CLI after running the wrapper:
-
-```bash
-./examples/copilot-azure-wrapper.sh
-```
-
-Then check:
-
-```bash
-jq '.subagents.agents' ~/.copilot/settings.json
-```
-
-Inside Copilot CLI, open:
-
-```text
-/subagents
-```
-
-## VS Code does not show my custom model
-
-Model availability in VS Code depends on GitHub Copilot capabilities,
-organization settings, extension version, and custom model registration. The
-workspace settings select a model only after it is available to VS Code.
-
-## Copilot CLI command not found
-
-Install:
-
-```bash
-npm install -g @github/copilot
-```
-
-Then verify:
-
-```bash
-copilot --version
-```
+When running a `copilot-<profile>` shortcut, the launcher checks identity and
+access to ARM and Key Vault. If the session is missing or the token has expired
+or been revoked (for example, `AADSTS50173`), it starts device-code login for
+the profile tenant and retries validation once. Complete login and MFA in the
+browser. Permission and network errors do not start login. Without an
+interactive terminal, it prints the login command and exits; `doctor` remains
+read-only. Running `az logout` is not required.

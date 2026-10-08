@@ -1,0 +1,12 @@
+{
+  "name": "copilot-foundry-public-checks",
+  "version": "2.0.0",
+  "private": true,
+  "scripts": {
+    "test": "node --test tests/vscode-import.test.cjs",
+    "lint:docs": "markdownlint-cli2 \"*.md\" \"docs/**/*.md\" \".github/**/*.md\""
+  },
+  "devDependencies": {
+    "markdownlint-cli2": "0.18.1"
+  }
+}

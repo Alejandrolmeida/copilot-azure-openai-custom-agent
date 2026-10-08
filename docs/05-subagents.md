@@ -1,99 +1,79 @@
-# 05. Configure GitHub Copilot CLI subagents
+# 05. Subagents and auxiliary models
 
-🌐 Language: English | [Español](es/05-subagents.md)
+English | [Español](es/05-subagents.md)
 
-GitHub Copilot CLI can use subagents such as:
+These are different surfaces:
 
-```text
-explore
-task
-general-purpose
-code-review
-research
-```
+- The main session uses the selected profile/model.
+- Task/explore/research/review subagents can inherit that BYOK model.
+- Internal utilities can request a different deployment on the same account.
 
-Projects can also define agents in:
+Do not rewrite `~/.copilot/settings.json` to force every subagent to a costly
+model, maximum reasoning or maximum context. This client does not do that.
+`/subagents` shows user preferences, but actual events are the evidence.
+The launcher fixes one wire deployment per process; it does not route different
+subagents to different Azure deployments. Avoid per-agent model overrides
+that name deployments unavailable in the selected profile. When moving to a
+second machine, check its user/repository/local subagent preferences and
+compare the actual model events before relying on the setup.
 
-```text
-.github/agents/*.agent.md
-```
+To explicitly inherit the selected session model for the built-in agents,
+merge this into the user's `~/.copilot/settings.json`, preserving other keys:
 
-## Why configure subagents separately?
-
-The main Copilot CLI session can use your Azure model while subagents still use
-their default models. To avoid that, you need subagent overrides.
-
-Copilot CLI stores persistent settings in:
-
-```text
-~/.copilot/settings.json
-```
-
-The wrapper in this repository automatically updates that file before launching
-Copilot CLI.
-
-## Example subagent config
-
-```jsonc
+```json
 {
   "subagents": {
     "agents": {
-      "explore": {
-        "model": "gpt-5.5",
-        "effortLevel": "max",
-        "contextTier": "long_context"
-      },
-      "code-review": {
-        "model": "gpt-5.5",
-        "effortLevel": "max",
-        "contextTier": "long_context"
-      }
+      "task": {"model": "inherit"},
+      "explore": {"model": "inherit"},
+      "research": {"model": "inherit"},
+      "code-review": {"model": "inherit"},
+      "general-purpose": {"model": "inherit"},
+      "security-review": {"model": "inherit"}
     }
   }
 }
 ```
 
-## What the wrapper does
+This overrides preferred models from agent definitions, not an agent's
+`modelPolicy: "required"` or an explicit per-call model. Repository and local
+settings in `.github/copilot/settings.json` and
+`.github/copilot/settings.local.json` take precedence over user settings.
+Check those files, the effective `COPILOT_HOME`, and any custom agents on the
+second machine before starting a new session. The original machine confirmed
+`task` using `gpt-6-sol` after this setting; do not infer that every agent or
+profile has been tested from that one run.
 
-`examples/copilot-azure-wrapper.sh` configures:
+## Verify instead of guessing
 
-- built-in subagents: `explore`, `task`, `general-purpose`, `code-review`,
-  `research`
-- project agents found in `.github/agents/*.agent.md`
+Run one small, approved subagent task. Inspect only model and outcome fields
+in its session events. Do not paste full logs or internal messages.
+Compare requested, first-dispatched and completed model identifiers.
+The model named in a bundled YAML definition is not proof it was called.
 
-with:
+A previous CLI 1.0.91 verification observed primary-model inheritance for
+`task`, `explore`, `research` and `code-review`, and primary-model compaction.
+New versions and user preferences need new checks.
 
-```jsonc
-{
-  "model": "gpt-5.5",
-  "effortLevel": "max",
-  "contextTier": "long_context"
-}
-```
+## Example: an internal classifier
 
-## Verify
+CLI 1.0.91 was observed calling `gpt-5.4-nano` for a message-frustration classifier:
+Responses API, `conversation-background`, output budget 2,048.
+This was not the task subagent. A missing deployment caused 404 while normal
+chat still worked. Creating the exact matching deployment fixed the observed call.
 
-Run:
+This is a version-specific example, **not a required default for all users**.
+Do not provision Nano, older Luna/Mini models or Claude just because they
+appear in source definitions. Capture the actual model, wire name and route.
+Preserve punctuation in wire deployment names.
 
-```bash
-jq -r '
-  .subagents.agents
-  | to_entries[]
-  | [.key, .value.model, .value.effortLevel, .value.contextTier]
-  | @tsv
-' ~/.copilot/settings.json | column -t
-```
+Provision only a demonstrated dependency with approval using the Bicep path.
+Declare it as `role: "auxiliary"` in v2 metadata; it stays out of the primary
+selector and editor export. Metadata alone does not remap a hardcoded CLI call.
 
-Inside Copilot CLI, use:
+Check both RPM and TPM. A minimal deployment can serve one classifier call but
+throttle simultaneous sessions or PCs. Retries should respect Azure guidance;
+never increase capacity or move to global processing silently.
 
-```text
-/subagents
-```
-
-You should see the subagents as overridden and using your selected model ID.
-
-## Disable automatic subagent configuration
-
-```bash
-COPILOT_CONFIGURE_SUBAGENTS=false ./examples/copilot-azure-wrapper.sh
-```
+See [configuration limits](11-multimodel-profiles.md) and
+[optional provisioning](02-create-azure-openai-deployment.md).

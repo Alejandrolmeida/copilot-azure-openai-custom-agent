@@ -1,75 +1,42 @@
-# 06. Security recommendations
+# 06. Security and publication
 
-🌐 Language: English | [Español](es/06-security.md)
+English | [Español](es/06-security.md)
 
-## Never commit secrets
+Keep real profiles, subscription/tenant IDs, resource names, endpoints, emails,
+logs, imports and reports outside the repository. Operational identifiers are
+not necessarily credentials, but are still private under this project's policy.
+Use synthetic examples; never copy an operational walkthrough into public docs.
 
-Do not commit:
+Configuration is validated JSON, never `source` or `eval`. Keys travel in
+memory over HTTPS, not in process arguments or shared files. Child-tool filtering
+is not isolation from root or another process controlled by the same user.
+Do not use shell tracing, dump request bodies, or upload complete session logs.
 
-- API keys
-- `.env`
-- personal access tokens
-- tenant IDs if sensitive in your organization
-- private endpoints
-- customer names
-- internal project names
+Runtime users need read access. Writers and infrastructure operators require
+separate scoped permissions; no tool grants Owner to fix an error.
+Do not weaken tenant policy or firewall rules to make a test pass.
 
-The `.gitignore` in this repository excludes `.env` and `.env.*`.
+VS Code must create its own encrypted secrets on each machine. Do not edit or
+copy `state.vscdb`, fabricate references or use an arbitrary extension's secret
+namespace as a replacement for the editor's core credential service.
 
-## Prefer secret managers
-
-For local development, you can use:
-
-- Azure Key Vault
-- GitHub Codespaces secrets
-- OS keychain
-- password managers
-- environment variables injected by your shell profile
-
-## Azure Key Vault pattern
-
-Store your Azure OpenAI key:
+## Before publication
 
 ```bash
-az keyvault secret set \
-  --vault-name YOUR_KEY_VAULT_NAME \
-  --name azure-openai-api-key \
-  --value YOUR_API_KEY
+python3 scripts/check_public.py
+gitleaks dir . --redact --no-banner
+gitleaks git . --redact --no-banner
 ```
 
-Then configure `.env` without the key:
+The privacy checker detects selected operational patterns; Gitleaks detects
+credential patterns. Neither proves that every possible secret is absent.
+Review the staged diff and release contents. Never stage with an unreviewed
+`git add .`; never export all local Git refs or use `git push --mirror`.
+Private checkpoints can exist even when their files are untracked.
 
-```bash
-AZURE_KEYVAULT_NAME=YOUR_KEY_VAULT_NAME
-AZURE_KEYVAULT_SECRET_NAME=azure-openai-api-key
-AZURE_SUBSCRIPTION_ID=YOUR_SUBSCRIPTION_ID
-```
+Keep GitHub secret scanning and push protection enabled. CI must not receive
+Azure secrets or run live provisioning from pull requests. If a secret was
+published, revoke/rotate first; agree any history rewrite separately. Deletion
+from the latest commit does not remove forks, caches or earlier history.
 
-The wrapper can load the secret at runtime.
-
-For a fully portable setup where endpoint, deployment name, model identity,
-token budgets, and the key secret name are all loaded from Key Vault after
-`az login`, see
-[07. Portable bootstrap with Azure Key Vault](07-portable-keyvault-bootstrap.md).
-
-## Least privilege
-
-- Use separate resources for experimentation.
-- Rotate keys regularly.
-- Restrict network access when possible.
-- Use managed identity or Microsoft Entra ID where your client and service
-  support it.
-- Monitor token usage and costs.
-
-## Public tutorial checklist
-
-Before publishing a repo:
-
-```bash
-grep -R --line-number \
-  -E 'sk-|api[_-]?key|secret|tenant|subscription|openai.azure.com' . \
-  --exclude-dir=.git \
-  --exclude=.env.example
-```
-
-Review every match. Placeholder endpoints are fine; real values are not.
+See [SECURITY.md](../SECURITY.md) for confidential reporting.

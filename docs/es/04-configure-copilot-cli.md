@@ -1,103 +1,79 @@
-# 04. Configurar GitHub Copilot CLI con Azure OpenAI BYOK
+# 04. Perfiles CLI y sesiones
 
-🌐 Idioma: [English](../04-configure-copilot-cli.md) | Español
+[English](../04-configure-copilot-cli.md) | Español
 
-GitHub Copilot CLI admite proveedores de modelos personalizados mediante variables
-de entorno. Para Azure OpenAI / Azure AI Foundry, las variables importantes son:
-
-```bash
-COPILOT_PROVIDER_TYPE=azure
-COPILOT_PROVIDER_BASE_URL=https://YOUR-AZURE-OPENAI-RESOURCE.openai.azure.com
-COPILOT_PROVIDER_WIRE_API=responses
-COPILOT_PROVIDER_MODEL_ID=gpt-5.5
-COPILOT_PROVIDER_WIRE_MODEL=YOUR_DEPLOYMENT_NAME
-COPILOT_PROVIDER_MAX_PROMPT_TOKENS=1000000
-COPILOT_PROVIDER_MAX_OUTPUT_TOKENS=16384
-COPILOT_PROVIDER_API_KEY=YOUR_API_KEY
-```
-
-## ¿Por qué dos nombres de modelo?
-
-```text
-COPILOT_PROVIDER_MODEL_ID
-```
-
-es la identidad de modelo conocida que Copilot CLI usa para capacidades de
-agente, estrategia de prompts, compatibilidad con herramientas y límites de
-tokens.
-
-```text
-COPILOT_PROVIDER_WIRE_MODEL
-```
-
-es el nombre de implementación que se envía a Azure.
-
-Por ejemplo:
+Empieza con un vault que contenga [configuración y API key](07-portable-keyvault-bootstrap.md).
+Conserva el checkout en una ubicación permanente: los accesos apuntan a su
+script y al Python local, no a rutas de otro equipo.
 
 ```bash
-COPILOT_PROVIDER_MODEL_ID=gpt-5.5
-COPILOT_PROVIDER_WIRE_MODEL=my-gpt-5-5-deployment
+python3 scripts/foundry.py configure work
+python3 scripts/foundry.py doctor work
+export PATH="$HOME/.local/bin:$PATH"
+copilot-foundry work
 ```
 
-## Usar el wrapper
-
-Copia y edita `.env`:
+Para configurar sin interacción proporciona `--subscription`, `--tenant` y
+`--vault`. Para nombres de secretos personalizados, edita un perfil JSON privado
+e instálalo directamente:
 
 ```bash
-cp examples/.env.example .env
+python3 scripts/foundry.py install "$HOME/.config/my-foundry-input/work.json"
 ```
 
-Después ejecuta:
+El nombre del archivo sin extensión será el perfil. Se crean
+`~/.config/copilot-foundry/work.json`, `copilot-foundry`, `copilot-work` y
+`Copilot-work` en `~/.local/bin`. Se mantienen nombres como `foundry1`.
+Se rechazan archivos diferentes o enlaces simbólicos; revisa, no sobrescribas.
+Persiste PATH en la configuración del shell real sin reemplazarla.
 
 ```bash
-./examples/copilot-azure-wrapper.sh --print-config
+copilot-foundry work --model gpt-5-mini
+copilot-foundry work --resume
+copilot-foundry work --resume=YOUR_SESSION_ID
+copilot-foundry work --model gpt-5-mini -- -p "Reply exactly OK."
 ```
 
-Inicia una sesión interactiva:
+Solo se seleccionan modelos principales configurados; no se ofrecen auxiliares.
+Sin `--model`, el selector pide un número; `q`, EOF o Ctrl+C cancelan.
+Sin TTY, `--model` es obligatorio. Los argumentos adicionales van tras `--`;
+se rechazan overrides del proveedor/modelo/protección.
 
-```bash
-./examples/copilot-azure-wrapper.sh
-```
+El lanzador valida tenant, vault y recurso, limpia credenciales alternativas
+heredadas, lee la clave en memoria y la excluye del entorno de herramientas con
+`--secret-env-vars`. No actives trazas ni vuelques el entorno.
+Los procesos bajo control del mismo usuario/root siguen siendo una amenaza.
 
-Si quieres usar la misma configuración de modelo en varias máquinas después de
-`az login`, usa el flujo portable con Key Vault en
-[07. Bootstrap portable con Azure Key Vault](07-portable-keyvault-bootstrap.md).
+Los perfiles v2 no fuerzan esfuerzo de razonamiento: aplica el comportamiento
+del modelo en el CLI. Los v1 mantienen su esfuerzo anterior por compatibilidad.
+No se modifican ajustes globales de subagentes.
+Antes de iniciar Copilot, el lanzador lee de Azure el límite de tokens por
+60 segundos del deployment elegido. Reserva como máximo un cuarto de esos
+TPM para una petición, hasta un cuarto de ese presupuesto para salida, y
+limita la entrada y salida anunciadas. Si falta la cuota, no coincide el
+deployment o es insuficiente, falla antes de leer la API key.
+`--print-config` muestra tanto los límites configurados del modelo como
+los límites efectivos al arrancar. Este límite no garantiza evitar todo 429:
+sesiones simultáneas, turnos rápidos, imágenes y otros consumidores comparten
+el deployment. Respeta Retry-After; compacta o abre una sesión nueva si
+crece el historial.
+Para una peticion **individual** grande despues de aprobarse mas cuota, usa
+`copilot-foundry work --model MODELO --full-context`. Se detiene antes de leer
+la clave si el TPM real no cubre los limites configurados de entrada y salida
+dejando al menos un 12,5 % libre (1.200.000 TPM para 922.000 + 128.000).
+Este modo evita el limite conservador por peticion; concurrencia, estimacion
+de tokens y otros consumidores pueden seguir causando 429, y los contextos
+grandes cuestan mas. No solicita cuota ni modifica deployments.
 
-Ejecuta un prompt no interactivo:
+## Cambio y diagnóstico
 
-```bash
-./examples/copilot-azure-wrapper.sh \
-  -p "Inspect this repository and suggest three improvements" \
-  --allow-all
-```
+El lanzador de proveedor único fija endpoint y deployment al arrancar.
+`/model` no cambia de suscripción. Sal y relanza otro perfil/modelo con
+`--resume`. No abras dos procesos sobre la misma sesión.
+Un ID de otro PC no tiene por qué existir localmente.
 
-## Forma del endpoint
-
-Endpoint de Azure OpenAI v1 para llamadas directas a la API:
-
-```text
-https://YOUR-AZURE-OPENAI-RESOURCE.openai.azure.com/openai/v1/
-```
-
-URL base del proveedor Azure para Copilot CLI:
-
-```text
-https://YOUR-AZURE-OPENAI-RESOURCE.openai.azure.com
-```
-
-El wrapper elimina `/openai/v1/` automáticamente.
-
-## Flags recomendados
-
-El wrapper lanza:
-
-```bash
-copilot --model "$COPILOT_MODEL" --context long_context --effort max
-```
-
-Puedes sobrescribirlo:
-
-```bash
-COPILOT_CONTEXT_TIER=default ./examples/copilot-azure-wrapper.sh
-COPILOT_REASONING_EFFORT=high ./examples/copilot-azure-wrapper.sh
-```
+`doctor` es el diagnóstico resumido compartible. `--print-config` contiene
+identificadores operativos: conserva su salida en privado.
+`--smoke-test` consume tokens explícitamente, exige `OK` y uso registrado,
+y limita la salida a 1.024 tokens o al máximo del modelo si es menor.
+El modelo debe soportar la API declarada; no hay fallback automático.

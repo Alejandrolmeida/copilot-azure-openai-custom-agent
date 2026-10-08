@@ -1,123 +1,95 @@
-# GitHub Copilot con modelos personalizados de Azure OpenAI / Azure AI Foundry
+# Copilot con tus modelos de Azure OpenAI
 
-🌐 Idioma: [English](README.md) | Español
+Español | [English](README.md)
 
-Tutorial comunitario paso a paso para usar un modelo de Azure OpenAI o
-Azure AI Foundry como proveedor personalizado en flujos de trabajo de
-GitHub Copilot en:
+Cliente comunitario para **GitHub Copilot CLI y VS Code**, con recursos Azure
+OpenAI propios, varios perfiles y credenciales en Key Vault.
+Reutiliza recursos por defecto. El aprovisionamiento opcional con **Bicep**
+requiere un plan revisado y aprobación explícita.
 
-- Visual Studio Code
-- GitHub Copilot CLI
+> Esta es la revisión incompatible 2.0 del cliente. Lee la [migración](docs/es/08-migration.md)
+> antes de sustituir los wrappers Bash antiguos. La publicación no incluye
+> cuentas del mantenedor, credenciales, notas operativas ni historiales.
 
-Los ejemplos usan únicamente marcadores de posición. **No** confirmes endpoints
-reales, claves de API, identificadores de tenant, identificadores de
-suscripción ni datos personales.
+## Elige tu camino
 
-## Qué vas a construir
-
-Configurarás una implementación de modelo personalizada alojada en Azure y
-después la usarás desde herramientas de GitHub Copilot para flujos de
-codificación agénticos.
-
-```text
-Máquina de desarrollo
-├── VS Code + GitHub Copilot Chat
-└── GitHub Copilot CLI
-        │
-        ▼
-Implementación de Azure OpenAI / Azure AI Foundry
-        │
-        ▼
-Implementación de modelo, por ejemplo: gpt-5, gpt-4.1, gpt-4o, etc.
-```
-
-## Contenido del repositorio
-
-```text
-.
-├── README.md
-├── README.es.md
-├── docs/
-│   ├── 01-prerequisites.md
-│   ├── 02-create-azure-openai-deployment.md
-│   ├── 03-configure-vscode.md
-│   ├── 04-configure-copilot-cli.md
-│   ├── 05-subagents.md
-│   ├── 06-security.md
-│   ├── 07-portable-keyvault-bootstrap.md
-│   ├── troubleshooting.md
-│   └── es/
-│       ├── 01-prerequisites.md
-│       ├── 02-create-azure-openai-deployment.md
-│       ├── 03-configure-vscode.md
-│       ├── 04-configure-copilot-cli.md
-│       ├── 05-subagents.md
-│       ├── 06-security.md
-│       ├── 07-portable-keyvault-bootstrap.md
-│       └── troubleshooting.md
-├── examples/
-│   ├── .env.example
-│   ├── .env.keyvault.example
-│   ├── copilot-azure-wrapper.sh
-│   ├── vscode-settings.example.jsonc
-│   └── smoke-test-openai-v1.py
-├── scripts/
-│   ├── export-current-config-to-keyvault.sh
-│   └── install-from-keyvault.sh
-├── .gitignore
-└── LICENSE
-```
+| Ya tienes… | Empieza aquí |
+|---|---|
+| Cuenta Azure OpenAI y Key Vault configurados | [Inicio rápido](#inicio-rápido) |
+| Azure OpenAI pero no configuración portable | [Bootstrap Key Vault](docs/es/07-portable-keyvault-bootstrap.md) |
+| Ningún recurso | [Aprovisionamiento Bicep opcional](docs/es/02-create-azure-openai-deployment.md) |
+| Otro PC Windows | [Guía del segundo PC](docs/es/09-second-pc.md) |
 
 ## Inicio rápido
 
-1. Crea o identifica una implementación de Azure OpenAI / Azure AI Foundry.
-2. Copia el archivo de entorno de ejemplo:
+Utiliza una copia revisada de esta versión en una ubicación permanente.
+Instala Python 3.10+, Azure CLI y Copilot CLI compatible en Linux/WSL.
+Autentícate en ese entorno; los inicios de sesión GitHub y Azure son distintos.
 
-   ```bash
-   cp examples/.env.example .env
-   ```
-
-3. Rellena `.env` localmente con tus propios valores. Nunca confirmes `.env`.
-4. Prueba el endpoint:
-
-   ```bash
-   python examples/smoke-test-openai-v1.py
-   ```
-
-5. Usa el wrapper de GitHub Copilot CLI:
-
-   ```bash
-   ./examples/copilot-azure-wrapper.sh --print-config
-   ./examples/copilot-azure-wrapper.sh
-   ```
-
-## Ruta de documentación
-
-Empieza aquí:
-
-1. [Requisitos previos](docs/es/01-prerequisites.md)
-2. [Crear una implementación de Azure OpenAI](docs/es/02-create-azure-openai-deployment.md)
-3. [Configurar Visual Studio Code](docs/es/03-configure-vscode.md)
-4. [Configurar GitHub Copilot CLI](docs/es/04-configure-copilot-cli.md)
-5. [Configurar subagentes de Copilot CLI](docs/es/05-subagents.md)
-6. [Recomendaciones de seguridad](docs/es/06-security.md)
-7. [Bootstrap portable con Azure Key Vault](docs/es/07-portable-keyvault-bootstrap.md)
-8. [Solución de problemas](docs/es/troubleshooting.md)
-
-## Aviso importante de seguridad
-
-Este repositorio no contiene credenciales reales de forma intencionada. Los
-archivos de ejemplo usan valores de marcador de posición como:
-
-```text
-https://YOUR-AZURE-OPENAI-RESOURCE.openai.azure.com/openai/v1/
-YOUR_DEPLOYMENT_NAME
-YOUR_API_KEY
+```bash
+az login
+python3 scripts/foundry.py configure work
+python3 scripts/foundry.py doctor work
+export PATH="$HOME/.local/bin:$PATH"
+copilot-foundry work
 ```
 
-Usa variables de entorno, archivos `.env` ignorados por Git, Azure Key Vault,
-secretos de GitHub Codespaces o el gestor de secretos de tu plataforma.
+`configure` permite elegir una suscripción y un vault accesibles que ya contenga
+el [contrato de configuración](docs/es/11-multimodel-profiles.md).
+Valida identidad y endpoint sin cambiar tu suscripción predeterminada.
+El lanzador pide el modelo y después lee la API key en memoria.
 
-## Licencia
+```bash
+copilot-foundry work --model gpt-5-mini
+copilot-foundry work --resume
+```
 
-MIT
+El modelo debe existir en **tu** configuración. No se aprovisionan modelos ni
+suscripciones automáticamente. `doctor` no lee la API key ni ejecuta inferencia.
+Para VS Code sigue la [guía de registro](docs/es/03-configure-vscode.md);
+las variables de terminal no registran modelos en el editor.
+
+## Alcance compatible
+
+- Linux y Windows con WSL; VS Code Linux o Windows conectado a WSL.
+- Endpoints de **cuentas OpenAI** de Azure público, validados contra ARM.
+- CLI Responses o Chat Completions, declarado explícitamente por modelo.
+- Automatización experimental del editor: Responses, comando nativo verificado y consentimiento.
+- Sin garantía para wrappers Windows nativos, endpoints de proyectos Foundry,
+  otros protocolos/proveedores o nubes soberanas en esta revisión.
+
+Los subagentes pueden heredar el modelo BYOK activo; las utilidades internas
+pueden solicitar otro deployment. [Diagnostica las llamadas reales](docs/es/05-subagents.md),
+no solo el YAML del agente. Contexto, TPM/RPM y dinero son límites distintos.
+Los presupuestos envían alertas, no detienen el gasto.
+
+## Guías
+
+1. [Requisitos y permisos](docs/es/01-prerequisites.md)
+2. [Infraestructura opcional](docs/es/02-create-azure-openai-deployment.md)
+3. [VS Code y credenciales cifradas](docs/es/03-configure-vscode.md)
+4. [Perfiles CLI y sesiones](docs/es/04-configure-copilot-cli.md)
+5. [Subagentes y modelos auxiliares](docs/es/05-subagents.md)
+6. [Seguridad y publicación](docs/es/06-security.md)
+7. [Inicialización Key Vault](docs/es/07-portable-keyvault-bootstrap.md)
+8. [Migración incompatible](docs/es/08-migration.md)
+9. [Segundo PC](docs/es/09-second-pc.md)
+10. [Solución de problemas](docs/es/troubleshooting.md)
+11. [Contrato de configuración](docs/es/11-multimodel-profiles.md)
+
+## Desarrollo
+
+```bash
+python3 -m unittest discover -s tests -v
+npm ci --ignore-scripts
+npm test
+npm run lint:docs
+python3 scripts/check_docs.py
+python3 scripts/check_public.py
+```
+
+Consulta [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md) y
+[CHANGELOG.md](CHANGELOG.md). Los ejemplos son sintéticos. No publiques perfiles
+reales, endpoints, IDs de tenant/suscripción, claves, logs ni bases de datos del editor.
+
+Licencia [MIT](LICENSE).

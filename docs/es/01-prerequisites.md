@@ -1,66 +1,60 @@
-# 01. Requisitos previos
+# 01. Requisitos
 
-🌐 Idioma: [English](../01-prerequisites.md) | Español
+[English](../01-prerequisites.md) | Español
 
-Necesitas:
-
-- Una cuenta de GitHub con acceso a GitHub Copilot.
-- Visual Studio Code con la extensión GitHub Copilot Chat.
-- GitHub Copilot CLI si quieres flujos de agentes en terminal.
-- Una suscripción de Azure con acceso a Azure OpenAI o Azure AI Foundry.
-- Un modelo de chat implementado, por ejemplo GPT-5, GPT-4.1, GPT-4o u otro
-  modelo compatible.
-- Python 3.10+ para la prueba de humo opcional.
-- Azure CLI si quieres cargar secretos desde Azure Key Vault.
-
-## Instalar GitHub Copilot CLI
-
-Opciones de instalación recomendadas:
+Utiliza Linux o Ubuntu/WSL con Python 3.10+, Azure CLI y Copilot CLI.
+La instalación npm de Copilot requiere Node.js 22+. VS Code se ejecuta en
+Linux o en Windows conectado al mismo entorno WSL.
 
 ```bash
-# npm
-npm install -g @github/copilot
-
-# o Homebrew
-brew install copilot-cli
-```
-
-Verifica:
-
-```bash
+python3 --version
+az version
+node --version
 copilot --version
+copilot help providers
 copilot --help
 ```
 
-## Iniciar sesión
-
-Para el enrutamiento normal de GitHub Copilot:
-
-```bash
-copilot login
-```
-
-Cuando se usa un proveedor BYOK personalizado con `COPILOT_PROVIDER_BASE_URL`,
-es posible que la autenticación de GitHub no sea necesaria para acceder al
-modelo, pero las características de integración con GitHub siguen requiriendo
-autenticación.
-
-## Instalar Azure CLI
+Si falta una dependencia, utiliza su instalador oficial y solicita aprobación
+para operaciones administrativas. No uses `sudo npm` para evitar un problema
+del prefijo de usuario. Copilot se instala con `npm install -g @github/copilot`.
+Usa `/login` dentro de Copilot para GitHub y `az login` dentro de WSL para Azure.
+Nunca pidas contraseñas o tokens en el chat.
 
 ```bash
-az version
-az login
-az account set --subscription YOUR_SUBSCRIPTION_ID
+az login --tenant YOUR_TENANT_ID
+az account show --query id -o tsv
 ```
 
-## Línea base de seguridad
+Anota y conserva la suscripción predeterminada. Los scripts pasan
+`--subscription` explícitamente y no ejecutan `az account set`.
 
-Nunca confirmes:
+## Permisos
 
-- `.env`
-- Claves de API
-- Identificadores de suscripción de Azure si los consideras sensibles
-- Identificadores de tenant
-- Tokens de acceso personal
-- Endpoints privados
-- Nombres de clientes o nombres internos de proyectos
+| Operación | Acceso necesario |
+|---|---|
+| Ejecutar un perfil | Lectura de metadatos y Key Vault Secrets User |
+| Inicializar/actualizar configuración | Listar claves de cuenta al inicializar; escritura de secretos del vault |
+| Crear infraestructura | Permisos de despliegue en los ámbitos aprobados |
+| Crear asignación de lector | Permiso de asignación de roles además del de despliegue |
+| Crear alertas de presupuesto | Escritura de presupuestos Consumption |
+
+Contributor no concede por sí solo asignación arbitraria de roles. No concedas
+Owner como solución rápida. La asignación Bicep de lector es opcional y no
+otorga escritura. Los permisos temporales de escritura requieren aprobación
+separada y retirada por su propietario.
+
+## Compatibilidad
+
+La instalación de origen utilizó Copilot CLI 1.0.91 y VS Code 1.140.0.
+Es evidencia, no una garantía universal de versiones. `doctor` comprueba flags
+del CLI, identidad de cuenta/deployment y disponibilidad, no todas las funciones.
+El importador del editor verifica el comando interno antes de usarlo.
+
+Está implementada autenticación por API key desde Key Vault. Si el tenant
+deshabilita claves locales, detente: no las habilites para eludir esa política.
+Esta revisión no implementa un cliente exclusivamente Entra.
+
+Fuentes: [instalación CLI](https://docs.github.com/en/copilot/get-started/cli-quickstart),
+[Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli-linux),
+[WSL](https://learn.microsoft.com/windows/wsl/install).

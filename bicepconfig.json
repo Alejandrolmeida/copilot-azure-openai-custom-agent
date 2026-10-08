@@ -1,0 +1,11 @@
+{
+  "analyzers": {
+    "core": {
+      "enabled": true,
+      "rules": {
+        "secure-parameter-default": {"level": "error"},
+        "outputs-should-not-contain-secrets": {"level": "error"}
+      }
+    }
+  }
+}

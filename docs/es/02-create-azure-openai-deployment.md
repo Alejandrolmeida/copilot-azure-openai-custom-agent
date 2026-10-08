@@ -1,75 +1,62 @@
-# 02. Crear una implementación de Azure OpenAI / Azure AI Foundry
+# 02. Infraestructura Bicep opcional
 
-🌐 Idioma: [English](../02-create-azure-openai-deployment.md) | Español
+[English](../02-create-azure-openai-deployment.md) | Español
 
-Esta guía usa marcadores de posición genéricos. Sustitúyelos por tus propios nombres.
+Reutilizar recursos es la opción predeterminada. Aprovisionar crea recursos
+facturables y requiere permiso separado de la instalación cliente. Las pruebas
+predeterminadas no despliegan en Azure.
 
-## Opción A: portal de Azure AI Foundry
+Copia `examples/provision.example.json` **fuera del repositorio**. Sustituye
+identidades sintéticas, nombres y región. El ejemplo reutiliza cuenta/vault
+y no despliega modelos: no es un plan de infraestructura listo para aplicar.
 
-1. Abre Azure AI Foundry.
-2. Crea o selecciona un proyecto.
-3. Ve a **Models + endpoints**.
-4. Implementa un modelo de chat.
-5. Elige un nombre de implementación, por ejemplo:
+Para recursos nuevos cambia `use_existing_*` a false. Utiliza
+`create_resource_group` solo si es necesario. Proporciona rangos IPv4 públicos
+en `allowed_ips`, o acepta acceso de red amplio mediante `allow_public_access`.
+Los vaults nuevos usan RBAC, retención de 90 días y protección de purga:
+comprende esa protección irreversible antes de aprobar.
 
-   ```text
-   my-gpt-deployment
-   ```
-
-6. Copia el endpoint. Para Azure OpenAI v1 normalmente tiene este aspecto:
-
-   ```text
-   https://YOUR-AZURE-OPENAI-RESOURCE.openai.azure.com/openai/v1/
-   ```
-
-7. Obtén una clave de API desde el recurso o configura autenticación con
-   Microsoft Entra ID si tu cliente lo admite.
-
-## Opción B: ejemplo con Azure CLI
-
-Los comandos exactos de CLI dependen de la disponibilidad del modelo, la región,
-la cuota y el tipo de implementación. Úsalo como punto de partida:
+Consulta disponibilidad sin inferencia:
 
 ```bash
-az cognitiveservices account create \
-  --name YOUR_AZURE_OPENAI_RESOURCE \
-  --resource-group YOUR_RESOURCE_GROUP \
-  --location YOUR_REGION \
-  --kind OpenAI \
-  --sku S0 \
-  --custom-domain YOUR_AZURE_OPENAI_RESOURCE
+python3 scripts/foundry.py catalog --subscription YOUR_SUBSCRIPTION_ID --location YOUR_REGION --model gpt-5-mini
 ```
 
-Después implementa el modelo desde el portal o con Azure CLI/API compatible para
-la familia de tu modelo.
+Cada entrada de `deployments` requiere `model`, `version`, `deployment`, `sku`,
+`capacity` (entero positivo) y `allow_global` (booleano).
+Usa versión y SKU del catálogo real. `GlobalStandard` exige `allow_global: true`;
+la región del recurso no limita su procesamiento global a esa región.
+`Standard` y `DataZoneStandard` tienen disponibilidad/cuota diferentes.
+No se soportan capacidad provisionada ni spillover implícito.
 
-## Recopila estos valores
+Los límites de la ficha del modelo no son unidades de asignación. El preflight
+suma capacidad por modelo/SKU de esa suscripción y verifica cuota disponible.
+ARM valida la capacidad. Si falta el mínimo, el valor predeterminado del catálogo
+no debe interpretarse como mínimo.
 
-Necesitarás:
-
-```text
-AZURE_OPENAI_BASE_URL=https://YOUR-AZURE-OPENAI-RESOURCE.openai.azure.com/openai/v1/
-AZURE_OPENAI_MODEL=YOUR_DEPLOYMENT_NAME
-AZURE_OPENAI_API_KEY=YOUR_API_KEY
-```
-
-## Prueba de humo
-
-Copia el archivo de entorno de ejemplo:
+`reader_object_id` crea opcionalmente **Secrets User**, nunca escritura.
+Déjalo vacío si el acceso se administra fuera. `budget_amount: 0` desactiva
+el presupuesto. Si lo activas, indica `budget_start` el primer día del mes y
+`budget_emails` privados; el importe usa la moneda de facturación de la
+suscripción. Las alertas no detienen el gasto ni deben sobrescribir presupuestos.
 
 ```bash
-cp examples/.env.example .env
+python3 scripts/provision.py plan "$HOME/.config/my-foundry-input/provision.json" --report "$HOME/foundry-plan.json"
+python3 scripts/provision.py apply "$HOME/.config/my-foundry-input/provision.json" --approval "$HOME/foundry-plan.json" --confirm YOUR_SUBSCRIPTION_ID --report "$HOME/foundry-apply.json"
 ```
 
-Edita `.env` y después ejecuta:
+Lee todos los `changes` y avisos del plan privado antes de aplicar.
+La aprobación cubre hashes del manifiesto/plantillas y resultado what-if:
+cualquier cambio de estado exige un plan nuevo. Los informes deben ser archivos
+nuevos fuera del repositorio. Solo se admite Create/NoChange/Ignore; modificaciones,
+borrados y resultados opacos detienen la operación. No es un gestor general
+ni una herramienta de redimensionado. Se pueden reutilizar deployments iguales;
+nunca se adoptan silenciosamente cuentas ajenas como nuevas.
 
-```bash
-python examples/smoke-test-openai-v1.py
-```
+Bicep usa modo incremental. No hay secretos en parámetros ni outputs.
+Después del despliegue, [inicializa Key Vault](07-portable-keyvault-bootstrap.md).
+Ante aplicación parcial/fallida, inspecciona ARM antes de repetir. No borres
+recursos previos como rollback; conserva los informes privados y las identidades.
 
-Resultado esperado:
-
-```text
-OK: request completed
-reply: endpoint operational
-```
+Fuentes: [Bicep](https://learn.microsoft.com/azure/azure-resource-manager/bicep/overview),
+[what-if](https://learn.microsoft.com/azure/azure-resource-manager/bicep/deploy-what-if).
